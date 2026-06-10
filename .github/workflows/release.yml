@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+tag:
+  - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-latest
+            binary_name: mediadl
+            archive_name: mediadl-linux-x86_64.tar.gz
+
+          - name: macos-x86_64
+            os: macos-13
+            binary_name: mediadl
+            archive_name: mediadl-macos-x86_64.tar.gz
+
+          - name: macos-aarch64
+            os: macos-latest
+            binary_name: mediadl
+            archive_name: mediadl-macos-aarch64.tar.gz
+
+          - name: windows-x86_64
+            os: windows-latest
+            binary_name: mediadl.exe
+            archive_name: mediadl-windows-x86_64.zip
+
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v5
+
+        - name: Build release binary
+          run: cargo build -p mediadl-cli --release
+
+        - name: Package Unix binary
+          if: runner.os != 'Windows'
+          run: |
+            mkdir dist
+            cp target/release/${{ matrix.binary_name }} dist/
+            tar -czf ${{ matrix.archive_name }} -C dist ${{ matrix.binary_name }}
+
+        - name: Package Windows binary
+          if: runner.os == 'Windows'
+          shell: pwsh
+          run: |
+            mkdir dist
+            Copy-Item "target/release/${{ matrix.binary_name }}" "dist/"
+            Compress-Archive -Path "dist/${{ matrix.binary_name }}" -DestinationPath "${{ matrix.archive_name }}"
+
+        - name: Upload release asset
+          uses: softprops/action-gh-release@v2
+          with:
+            files: ${{ matrix.archive_name }}

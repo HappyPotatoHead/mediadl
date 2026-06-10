@@ -6,3 +6,7 @@ edition = "2024"
 [dependencies]
 mediadl-core = { path = "../mediadl-core" }
 clap = { version = "4", features = ["derive"]}
+
+[[bin]]
+name="mediadl"
+path = "src/main.rs"
