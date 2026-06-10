@@ -23,7 +23,7 @@ jobs:
             archive_name: mediadl-linux-x86_64.tar.gz
 
           - name: macos-x86_64
-            os: macos-13
+            os: macos-15-intel
             binary_name: mediadl
             archive_name: mediadl-macos-x86_64.tar.gz
 
