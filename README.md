@@ -74,8 +74,6 @@ A [yt-dlp](https://github.com/yt-dlp/yt-dlp) wrapper for media archiving.
 
 A small CLI tool built with rust.
 
-<p align="right"><a href="#readme-top">⬆️</a></p>
-
 ### Built With
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp)
