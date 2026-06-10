@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-tag:
-  - "v*"
+    tag:
+      - "v*"
 
 permissions:
   contents: write
@@ -37,29 +37,29 @@ jobs:
             binary_name: mediadl.exe
             archive_name: mediadl-windows-x86_64.zip
 
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-        - name: Build release binary
-          run: cargo build -p mediadl-cli --release
+      - name: Build release binary
+        run: cargo build -p mediadl-cli --release
 
-        - name: Package Unix binary
-          if: runner.os != 'Windows'
-          run: |
-            mkdir dist
-            cp target/release/${{ matrix.binary_name }} dist/
-            tar -czf ${{ matrix.archive_name }} -C dist ${{ matrix.binary_name }}
+      - name: Package Unix binary
+        if: runner.os != 'Windows'
+        run: |
+          mkdir dist
+          cp target/release/${{ matrix.binary_name }} dist/
+          tar -czf ${{ matrix.archive_name }} -C dist ${{ matrix.binary_name }}
 
-        - name: Package Windows binary
-          if: runner.os == 'Windows'
-          shell: pwsh
-          run: |
-            mkdir dist
-            Copy-Item "target/release/${{ matrix.binary_name }}" "dist/"
-            Compress-Archive -Path "dist/${{ matrix.binary_name }}" -DestinationPath "${{ matrix.archive_name }}"
+      - name: Package Windows binary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          mkdir dist
+          Copy-Item "target/release/${{ matrix.binary_name }}" "dist/"
+          Compress-Archive -Path "dist/${{ matrix.binary_name }}" -DestinationPath "${{ matrix.archive_name }}"
 
-        - name: Upload release asset
-          uses: softprops/action-gh-release@v2
-          with:
-            files: ${{ matrix.archive_name }}
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.archive_name }}
