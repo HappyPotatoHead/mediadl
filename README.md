@@ -19,9 +19,9 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <!-- <a href="https://github.com/othneildrew/Best-README-Template"> -->
-  <!--   <img src="images/logo.png" alt="Logo" width="80" height="80"> -->
-  <!-- </a> -->
+  <a href="https://github.com/HappyPotatoHead/mediadl">
+    <img src="assets/mediadl.jpg" alt="mediadl">
+  </a>
 
   <h3 align="center">mediadl</h3>
 
@@ -78,7 +78,7 @@ A small CLI tool built with rust.
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 - [![Rust][Rust.com]][Rust-url]
-  - [crate clap](https://docs.rs/clap/latest/clap/)
+    - [crate clap](https://docs.rs/clap/latest/clap/)
 
 <p align="right"><a href="#readme-top">⬆️</a></p>
 
@@ -91,9 +91,9 @@ A small CLI tool built with rust.
 mediadl requires the following tools to be installed and available in PATH:
 
 - yt-dlp
-  - Refer to [yt-dlp download guide](https://github.com/yt-dlp/yt-dlp/wiki/Installation) for your respective OS
+    - Refer to [yt-dlp download guide](https://github.com/yt-dlp/yt-dlp/wiki/Installation) for your respective OS
 - ffmpeg
-  - Refer to [ffmpeg download page](https://ffmpeg.org/download.html) for your respective OS
+    - Refer to [ffmpeg download page](https://ffmpeg.org/download.html) for your respective OS
 
 ```zsh
 # these commands are just examples, please refer to the links above before downloading
@@ -196,6 +196,8 @@ https://youtu.be/example,HappyPotatoHead,@
 
 ## Config
 
+<img src="assets/mediadl_config.png" alt="configuration example">
+
 Show config:
 
 ```zsh
@@ -245,12 +247,13 @@ media config reset
 
 ## Notes
 
-`mediadl` does not replace yt-dlp. It is a small wrapper that provides a more opinionated workflow for repeated audio/video downloads.
+`mediadl` does not replace yt-dlp. It is a small wrapper that provides a workflow for repeated audio/video downloads.
 
 <!-- ROADMAP -->
 
 ## Roadmap
 
+- [x] ReadMe changes
 - [ ] Refactor code
 - [ ] More config options
 - [ ] Add prerequisite checks
