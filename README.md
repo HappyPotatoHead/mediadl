@@ -19,9 +19,9 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <!-- <a href="https://github.com/othneildrew/Best-README-Template"> -->
-  <!--   <img src="images/logo.png" alt="Logo" width="80" height="80"> -->
-  <!-- </a> -->
+  <a href="https://github.com/HappyPotatoHead/mediadl">
+    <img src="assets/mediadl.jpg" alt="mediadl">
+  </a>
 
   <h3 align="center">mediadl</h3>
 
@@ -78,7 +78,7 @@ A small CLI tool built with rust.
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 - [![Rust][Rust.com]][Rust-url]
-  - [crate clap](https://docs.rs/clap/latest/clap/)
+    - [crate clap](https://docs.rs/clap/latest/clap/)
 
 <p align="right"><a href="#readme-top">⬆️</a></p>
 
@@ -91,9 +91,9 @@ A small CLI tool built with rust.
 mediadl requires the following tools to be installed and available in PATH:
 
 - yt-dlp
-  - Refer to [yt-dlp download guide](https://github.com/yt-dlp/yt-dlp/wiki/Installation) for your respective OS
+    - Refer to [yt-dlp download guide](https://github.com/yt-dlp/yt-dlp/wiki/Installation) for your respective OS
 - ffmpeg
-  - Refer to [ffmpeg download page](https://ffmpeg.org/download.html) for your respective OS
+    - Refer to [ffmpeg download page](https://ffmpeg.org/download.html) for your respective OS
 
 ```zsh
 # these commands are just examples, please refer to the links above before downloading
@@ -196,6 +196,8 @@ https://youtu.be/example,HappyPotatoHead,@
 
 ## Config
 
+<!-- <img src="assets/mediadl_config.png" alt="configuration example"> -->
+
 Show config:
 
 ```zsh
@@ -230,27 +232,45 @@ media config reset
 
 ### Config keys
 
-- `download-path`
-- `audio-format`
-- `video-format`
-- `video-quality`
-- `audio-thumbnail`
-- `video-thumbnail`
-- `audio-output-template`
-- `video-output-template`
-- `retries`
-- `max-parallel-downloads`
+| Config                                             | Description                                                                                                                | Example                                                                             |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `download-path`                                    | base path                                                                                                                  | `download-path=~/Videos/Lectures`                                                   |
+| `audio-format` <br> `video-format`                 | refer to [yt-dlp format selection](https://github.com/yt-dlp/yt-dlp#format-selection), one format at a time                | audio: `opus`/`mp3`/`flac` <br> video: `mp4`/`hvac`                                 |
+| `video-quality`                                    | based on [yt-dlp res options](https://github.com/yt-dlp/yt-dlp#format-selection)<br>You can also specify custom resolution | `max`, `1440`/`1440p`, `1080`/`1080p`, `720`/`720p`, `480`/`480p`, \<custom height> |
+| `audio-thumbnail`<br>`video-thumbnail`             | control how thumbnail images are saved                                                                                     | `none`/`write`/`embed`/`both`                                                       |
+| `audio-output-template`<br>`video-output-template` | control the names of the files                                                                                             | `%(title)s.%(ext)s`                                                                 |
+| `retries`                                          | retry the archiving upon failures                                                                                          | `1`/`2`/`3`                                                                         |
+| `max-parallel-downloads`                           | keep it low to avoid being blocked                                                                                         | `1`/`2`/`3`                                                                         |
+
+Default config file:
+
+```.conf
+download_path=
+audio_format=mp3
+video_format=mp4
+video_quality=1080p
+# none, embed, write, both
+audio_thumbnail=none
+video_thumbnail=none
+# i would recommend, leaving this as is
+audio_output_template=%(title)s.%(ext)s
+video_output_template=%(title)s.%(ext)s
+retries=3
+# keep this value low to avoid being blocked
+max_parallel_downloads=2
+```
 
 <p align="right"><a href="#readme-top">⬆️</a></p>
 
 ## Notes
 
-`mediadl` does not replace yt-dlp. It is a small wrapper that provides a more opinionated workflow for repeated audio/video downloads.
+`mediadl` does not replace yt-dlp. It is a small wrapper that provides a workflow for repeated audio/video downloads.
 
 <!-- ROADMAP -->
 
 ## Roadmap
 
+- [x] ReadMe changes
 - [ ] Refactor code
 - [ ] More config options
 - [ ] Add prerequisite checks
