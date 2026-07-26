@@ -196,7 +196,7 @@ https://youtu.be/example,HappyPotatoHead,@
 
 ## Config
 
-<img src="assets/mediadl_config.png" alt="configuration example">
+<!-- <img src="assets/mediadl_config.png" alt="configuration example"> -->
 
 Show config:
 
@@ -232,16 +232,33 @@ media config reset
 
 ### Config keys
 
-- `download-path`
-- `audio-format`
-- `video-format`
-- `video-quality`
-- `audio-thumbnail`
-- `video-thumbnail`
-- `audio-output-template`
-- `video-output-template`
-- `retries`
-- `max-parallel-downloads`
+| Config                                             | Description                                                                                                                | Example                                                                             |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `download-path`                                    | base path                                                                                                                  | `download-path=~/Videos/Lectures`                                                   |
+| `audio-format` <br> `video-format`                 | refer to [yt-dlp format selection](https://github.com/yt-dlp/yt-dlp#format-selection), one format at a time                | audio: `opus`/`mp3`/`flac` <br> video: `mp4`/`hvac`                                 |
+| `video-quality`                                    | based on [yt-dlp res options](https://github.com/yt-dlp/yt-dlp#format-selection)<br>You can also specify custom resolution | `max`, `1440`/`1440p`, `1080`/`1080p`, `720`/`720p`, `480`/`480p`, \<custom height> |
+| `audio-thumbnail`<br>`video-thumbnail`             | control how thumbnail images are saved                                                                                     | `none`/`write`/`embed`/`both`                                                       |
+| `audio-output-template`<br>`video-output-template` | control the names of the files                                                                                             | `%(title)s.%(ext)s`                                                                 |
+| `retries`                                          | retry the archiving upon failures                                                                                          | `1`/`2`/`3`                                                                         |
+| `max-parallel-downloads`                           | keep it low to avoid being blocked                                                                                         | `1`/`2`/`3`                                                                         |
+
+Default config file:
+
+```.conf
+download_path=
+audio_format=mp3
+video_format=mp4
+video_quality=1080p
+# none, embed, write, both
+audio_thumbnail=none
+video_thumbnail=none
+# i would recommend, leaving this as is
+audio_output_template=%(title)s.%(ext)s
+video_output_template=%(title)s.%(ext)s
+retries=3
+# keep this value low to avoid being blocked
+max_parallel_downloads=2
+```
 
 <p align="right"><a href="#readme-top">⬆️</a></p>
 
