@@ -12,6 +12,7 @@ use directories::ProjectDirs;
 
 #[derive(Default)]
 pub enum AudioFormat {
+    // I already have #[default] here, so the Default impl is not necessary
     #[default]
     Mp3,
     Opus,
@@ -47,20 +48,49 @@ pub enum ThumbnailOption {
     WriteAndEmbed,
 }
 
+// NOTE: rules of public and private fields
+// 1. Always default to private
+// 2. Important questions to ask
+//      - Can I break my struct by putting a bad/invalid value in this field
+//      - Am I 100% sure I'll never want to intervene when this changes, ever in the future?
+// 3. If a field must stay in sync with another field, both are private
+// 4. Expose behaviour, not state
+
 pub struct AppConfig {
-    pub default_download_path: PathBuf,
+    default_download_path: PathBuf,
+    audio_output_template: PathBuf,
+    video_output_template: PathBuf,
+    default_retries: u8,
+    max_parallel_downloads: u8,
+
     pub default_audio_format: AudioFormat,
     pub default_video_format: VideoFormat,
     pub default_video_quality: VideoQuality,
     pub video_thumbnail: ThumbnailOption,
     pub audio_thumbnail: ThumbnailOption,
-    pub audio_output_template: PathBuf,
-    pub video_output_template: PathBuf,
-    pub default_retries: u8,
-    pub max_parallel_downloads: u8,
 }
 
 impl AppConfig {
+    pub fn get_download_path(&self) -> &Path {
+        &self.default_download_path
+    }
+
+    pub fn get_audio_template_path(&self) -> &Path {
+        &self.audio_output_template
+    }
+
+    pub fn get_video_template_path(&self) -> &Path {
+        &self.video_output_template
+    }
+
+    pub fn get_default_retries(&self) -> u8 {
+        self.default_retries
+    }
+
+    pub fn get_max_parallel_downloads(&self) -> u8 {
+        self.max_parallel_downloads
+    }
+
     pub fn set_download_path<P: AsRef<Path>>(&mut self, path: P) -> Result<(), String> {
         let path: &Path = path.as_ref();
 
@@ -362,27 +392,6 @@ impl Display for ThumbnailOption {
     }
 }
 
-// impl Default for AudioFormat {
-//     fn default() -> Self {
-//         AudioFormat::Mp3
-//     }
-// }
-// impl Default for VideoFormat {
-//     fn default() -> Self {
-//         VideoFormat::Mp4
-//     }
-// }
-// impl Default for VideoQuality {
-//     fn default() -> Self {
-//         VideoQuality::Res1080p
-//     }
-// }
-// impl Default for ThumbnailOption {
-//     fn default() -> Self {
-//         ThumbnailOption::None
-//     }
-// }
-
 fn normalise_input(input: &str, field_name: &str) -> Result<String, String> {
     let cleaned = input.trim().to_lowercase();
 
@@ -409,3 +418,26 @@ fn validate_output_template(path: &Path) -> Result<(), String> {
 
     Ok(())
 }
+
+// DUMP:
+//
+// impl Default for AudioFormat {
+//     fn default() -> Self {
+//         AudioFormat::Mp3
+//     }
+// }
+// impl Default for VideoFormat {
+//     fn default() -> Self {
+//         VideoFormat::Mp4
+//     }
+// }
+// impl Default for VideoQuality {
+//     fn default() -> Self {
+//         VideoQuality::Res1080p
+//     }
+// }
+// impl Default for ThumbnailOption {
+//     fn default() -> Self {
+//         ThumbnailOption::None
+//     }
+// }

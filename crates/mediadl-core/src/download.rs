@@ -82,7 +82,7 @@ pub fn download_audio(request: AudioDownloadRequest, config: &AppConfig) -> Resu
     let normalised_url = normalise_url(&request.url)?;
     config.ensure_download_path_exists()?;
 
-    let retries = request.retries.unwrap_or(config.default_retries);
+    let retries = request.retries.unwrap_or(config.get_default_retries());
     let show_progress = request.show_progress.unwrap_or(true);
     let attempts = retries + 1;
     let mut output_template = build_output_base_path(
@@ -90,7 +90,9 @@ pub fn download_audio(request: AudioDownloadRequest, config: &AppConfig) -> Resu
         request.creator.as_deref(),
         request.collection.as_deref(),
     );
-    output_template = output_template.join(&config.audio_output_template);
+
+    let audio_output_template = config.get_audio_template_path();
+    output_template.push(audio_output_template);
 
     run_command_with_retries(
         || {
@@ -118,7 +120,7 @@ pub fn download_video(request: VideoDownloadRequest, config: &AppConfig) -> Resu
     let normalised_url = normalise_url(&request.url)?;
     config.ensure_download_path_exists()?;
 
-    let retries = request.retries.unwrap_or(config.default_retries);
+    let retries = request.retries.unwrap_or(config.get_default_retries());
     let show_progress = request.show_progress.unwrap_or(true);
     let attempts = retries + 1;
     let mut output_template = build_output_base_path(
@@ -126,7 +128,10 @@ pub fn download_video(request: VideoDownloadRequest, config: &AppConfig) -> Resu
         request.creator.as_deref(),
         request.collection.as_deref(),
     );
-    output_template = output_template.join(&config.video_output_template);
+
+    let video_output_template = config.get_video_template_path();
+    output_template.push(video_output_template);
+
     let quality = config.default_video_quality.to_string();
     let format_selector = build_video_format_selector(&quality)?;
 
@@ -214,14 +219,17 @@ fn build_output_base_path(
     creator: Option<&str>,
     collection: Option<&str>,
 ) -> std::path::PathBuf {
-    let mut output_template = config.default_download_path.clone();
+    let base_path = config.get_download_path();
+
+    let mut output_template = base_path.to_path_buf();
+    // let mut output_template = config.default_download_path.clone();
 
     if let Some(creator) = creator {
-        output_template = output_template.join(sanitise_filename(creator));
+        output_template.push(sanitise_filename(creator));
     }
 
     if let Some(collection) = collection {
-        output_template = output_template.join(sanitise_filename(collection));
+        output_template.push(sanitise_filename(collection));
     }
 
     output_template
@@ -304,7 +312,7 @@ where
     T: Clone + Send,
     F: Fn(T, &AppConfig) -> Result<(), String> + Sync,
 {
-    let max_parallel = config.max_parallel_downloads.max(1);
+    let max_parallel = config.get_max_parallel_downloads().max(1);
     let mut errors = Vec::new();
 
     for chunk in requests.chunks(max_parallel.into()) {
