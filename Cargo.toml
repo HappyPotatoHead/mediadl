@@ -1,8 +1,8 @@
 [workspace]
 members = [
     "crates/mediadl-core",
-    "crates/mediadl-cli",
-    # "crates/mediadl-tui"
+    "crates/mediadl-cli", 
+    "crates/mediadl-tui",
 ]
 
 resolver = "3"
