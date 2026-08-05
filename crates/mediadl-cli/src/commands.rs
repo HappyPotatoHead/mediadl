@@ -4,7 +4,7 @@ use std::io::{self, Write};
 
 #[derive(Parser)]
 #[command(name = "mediadl")]
-#[command(version = "1.0")]
+#[command(version = "1.0.1")]
 #[command(about="rust-based yt-dlp wrapper", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
