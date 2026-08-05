@@ -1,3 +1,5 @@
+// anything related to drawing is here
+//
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Rect},

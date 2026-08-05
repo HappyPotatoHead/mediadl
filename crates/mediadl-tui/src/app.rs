@@ -1,3 +1,5 @@
+// changes data
+
 use crate::event::{AppEvent, Event, EventHandler};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::DefaultTerminal;
