@@ -2,7 +2,7 @@
 members = [
     "crates/mediadl-core",
     "crates/mediadl-cli",
-    "crates/mediadl-tui"
+    # "crates/mediadl-tui"
 ]
 
 resolver = "3"
