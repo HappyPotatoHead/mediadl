@@ -31,12 +31,36 @@ pub enum Event {
 /// You can extend this enum with your own custom events.
 #[derive(Clone, Debug)]
 pub enum AppEvent {
-    /// Increment the counter.
-    Increment,
-    /// Decrement the counter.
-    Decrement,
-    /// Quit the application.
+    // k or up
+    MoveUp,
+    // j or down
+    MoveDown,
+    // tab
+    Forward,
+    // shift + tab
+    Backward,
+
+    // esc
+    // ExitEdit,
+
+    // i
+    // Edit,
+
+    // enter
+    Download,
+
+    // q
+    Back,
+
+    // ctrl + q
     Quit,
+
+    // config screen
+    OpenConfig,
+    // future
+    ShowOptions,
+    // OpenLayout,
+    // OpenColours,
 }
 
 /// Terminal event handler.
@@ -46,6 +70,12 @@ pub struct EventHandler {
     sender: mpsc::UnboundedSender<Event>,
     /// Event receiver channel.
     receiver: mpsc::UnboundedReceiver<Event>,
+}
+
+impl Default for EventHandler {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl EventHandler {
