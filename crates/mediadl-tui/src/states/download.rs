@@ -33,8 +33,8 @@ enum DownloadFocus {
     Input,
 }
 
-#[derive(Debug, Default)]
-enum DownloadType {
+#[derive(Debug, Default, PartialEq)]
+pub enum DownloadType {
     #[default]
     Video,
     Audio,
@@ -43,6 +43,10 @@ enum DownloadType {
 
 // download here refers to when the user is in the download screen
 impl DownloadState {
+    pub fn get_mode(&self) -> &DownloadType {
+        &self.mode
+    }
+
     pub fn is_editing(&self) -> bool {
         self.input_mode == InputMode::Edit
     }
@@ -55,6 +59,14 @@ impl DownloadState {
 
     pub fn exit_edit(&mut self) {
         self.input_mode = InputMode::Normal;
+    }
+
+    pub fn active_text(&self) -> &str {
+        self.inputs.get(&self.active_field).text()
+    }
+
+    pub fn active_cursor(&self) -> usize {
+        self.inputs.get(&self.active_field).cursor_position()
     }
 
     // cursor movements
@@ -261,6 +273,14 @@ impl DownloadState {
 }
 
 impl DownloadInputs {
+    fn get(&self, field: &InputField) -> &TextInput {
+        match field {
+            InputField::Creator => &self.creator,
+            InputField::Collection => &self.collection,
+            InputField::Url => &self.url,
+            InputField::Type => &self.kind,
+        }
+    }
     fn get_mut(&mut self, field: &InputField) -> &mut TextInput {
         match field {
             InputField::Creator => &mut self.creator,
@@ -302,6 +322,11 @@ impl PanelNavigation for DownloadState {
     }
 }
 
+// impl DownloadType {
+//     pub fn mode(&self) -> &DownloadType {
+//         &self.mode
+//     }
+// }
 impl Cycle for DownloadType {
     fn next(&mut self) {
         *self = match self {

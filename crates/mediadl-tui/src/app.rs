@@ -37,7 +37,7 @@ impl App {
     /// Run the application's main loop.
     pub async fn run(mut self, mut terminal: DefaultTerminal) -> color_eyre::Result<()> {
         while self.running {
-            terminal.draw(|frame| frame.render_widget(&self, frame.area()))?;
+            terminal.draw(|frame| self.render(frame))?;
             match self.events.next().await? {
                 Event::Tick => self.tick(),
                 Event::Crossterm(event) => match event {
@@ -49,9 +49,6 @@ impl App {
                     _ => {}
                 },
                 Event::App(app_event) => match app_event {
-                    // AppEvent::Increment => self.increment_counter(),
-                    // AppEvent::Decrement => self.decrement_counter(),
-                    // AppEvent::DownloadMode => self.change_download_mode(),
                     AppEvent::MoveUp => self.move_up(),
                     AppEvent::MoveDown => self.move_down(),
 
