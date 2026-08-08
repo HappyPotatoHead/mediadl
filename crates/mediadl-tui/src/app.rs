@@ -2,13 +2,18 @@
 use crate::event::{AppEvent, Event, EventHandler};
 use crate::states::Screen;
 use crate::states::config::ConfigState;
-use crate::states::download::DownloadState;
+use crate::states::download::{DownloadState, SubmitOutcome};
 use crate::states::output::OutputState;
 use crate::traits::{PanelNavigation, VerticalNavigation};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use mediadl_core::config::AppConfig;
+use mediadl_core::download::{
+    AudioDownloadRequest, VideoDownloadRequest, download_audio, download_audio_batch_parallel,
+    download_video, download_video_batch_parallel,
+};
 
 use ratatui::DefaultTerminal;
+use std::sync::Arc;
 
 // Application.
 #[derive(Debug)]
@@ -62,6 +67,13 @@ impl App {
                     AppEvent::OpenConfig => self.open_config(),
                     AppEvent::ShowOptions => self.show_options(),
                     AppEvent::Quit => self.quit(),
+                    AppEvent::DownloadProgress(line) => self.output.push_status(line),
+                    AppEvent::DownloadFinished(Ok(())) => {
+                        self.output.push_status("Download finished".to_string())
+                    }
+                    AppEvent::DownloadFinished(Err(err)) => {
+                        self.output.push_status(format!("Download failed: {err}"))
+                    }
                 },
             }
         }
@@ -105,14 +117,26 @@ impl App {
 
     fn move_up(&mut self) {
         match self.screen {
-            Screen::Download => self.download.move_up(),
+            Screen::Download => {
+                if self.download.is_output_focus() {
+                    self.output.scroll_up();
+                } else {
+                    self.download.move_up();
+                }
+            }
             Screen::Config => self.config.move_up(),
         }
     }
 
     fn move_down(&mut self) {
         match self.screen {
-            Screen::Download => self.download.move_down(),
+            Screen::Download => {
+                if self.download.is_output_focus() {
+                    self.output.scroll_down();
+                } else {
+                    self.download.move_down();
+                }
+            }
             Screen::Config => self.config.move_down(),
         }
     }
@@ -151,10 +175,61 @@ impl App {
     }
 
     fn download(&mut self) {
-        match self.screen {
-            Screen::Download => self.download.submit(&mut self.output, &self.config.config),
-            Screen::Config => {}
+        if !matches!(self.screen, Screen::Download) {
+            return;
         }
+        match self.download.submit(&mut self.output) {
+            SubmitOutcome::Handled => {}
+            SubmitOutcome::StartVideo(request) => self.spawn_video(request),
+            SubmitOutcome::StartAudio(request) => self.spawn_audio(request),
+            SubmitOutcome::StartVideoBatch(request) => self.spawn_video_batch(request),
+            SubmitOutcome::StartAudioBatch(request) => self.spawn_audio_batch(request),
+            // Screen::Download => self.download.submit(&mut self.output, &self.config.config),
+            // Screen::Config => {}
+        }
+    }
+
+    fn spawn_video(&mut self, request: VideoDownloadRequest) {
+        let finished_sender = self.events.sender();
+        let progress_sender = finished_sender.clone();
+        let config = Arc::clone(&self.config.config);
+        let request = request.with_on_line(move |line| {
+            let _ = progress_sender.send(Event::App(AppEvent::DownloadProgress(line)));
+        });
+        tokio::task::spawn_blocking(move || {
+            let result = download_video(request, &config);
+            let _ = finished_sender.send(Event::App(AppEvent::DownloadFinished(result)));
+        });
+    }
+    fn spawn_audio(&mut self, request: AudioDownloadRequest) {
+        let finished_sender = self.events.sender();
+        let progress_sender = finished_sender.clone();
+        let config = Arc::clone(&self.config.config);
+        let request = request.with_on_line(move |line| {
+            let _ = progress_sender.send(Event::App(AppEvent::DownloadProgress(line)));
+        });
+        tokio::task::spawn_blocking(move || {
+            let result = download_audio(request, &config);
+            let _ = finished_sender.send(Event::App(AppEvent::DownloadFinished(result)));
+        });
+    }
+
+    fn spawn_video_batch(&mut self, requests: Vec<VideoDownloadRequest>) {
+        let finished_sender = self.events.sender();
+        let config = Arc::clone(&self.config.config);
+        tokio::task::spawn_blocking(move || {
+            let result = download_video_batch_parallel(&requests, &config);
+            let _ = finished_sender.send(Event::App(AppEvent::DownloadFinished(result)));
+        });
+    }
+
+    fn spawn_audio_batch(&mut self, requests: Vec<AudioDownloadRequest>) {
+        let finished_sender = self.events.sender();
+        let config = Arc::clone(&self.config.config);
+        tokio::task::spawn_blocking(move || {
+            let result = download_audio_batch_parallel(&requests, &config);
+            let _ = finished_sender.send(Event::App(AppEvent::DownloadFinished(result)));
+        });
     }
 
     fn open_config(&mut self) {
@@ -167,9 +242,10 @@ impl App {
     fn handle_normal_key(&mut self, key_event: KeyEvent) -> color_eyre::Result<()> {
         match (key_event.code, key_event.modifiers) {
             // reserved for only moving between panels
-            (KeyCode::Tab, mods) if mods.contains(KeyModifiers::SHIFT) => {
-                self.events.send(AppEvent::Backward)
-            }
+            // (KeyCode::Tab, mods) if mods.contains(KeyModifiers::SHIFT) => {
+            //     self.events.send(AppEvent::Backward)
+            // }
+            (KeyCode::BackTab, _) => self.events.send(AppEvent::Backward),
             (KeyCode::Tab, _) => self.events.send(AppEvent::Forward),
 
             (KeyCode::Char('q'), mods) if mods.contains(KeyModifiers::CONTROL) => {

@@ -1,13 +1,13 @@
 // ui.rs
 use crate::app::App;
-use crate::states::download::{DownloadState, DownloadType};
+use crate::states::download::DownloadType;
 // use crate::states::Screen;
 use ratatui::Frame;
 use ratatui::{
     layout::{Constraint, Flex, Layout, Margin, Rect},
-    style::{Color, Modifier, Style, Stylize},
+    style::{Color, Style, Stylize},
     symbols::line::HORIZONTAL,
-    text::{Line, Span},
+    text::Line,
     widgets::{Block, BorderType, List, ListItem, Padding, Paragraph},
 };
 
@@ -47,8 +47,10 @@ impl App {
         let [top, main] = frame.area().layout(&vertical_main);
         let [left, right] = main.layout(&horizontal_main);
         let [download_panel, output_panel] = right.layout(&vertical_right);
-
-        let title = Line::from_iter([Span::from("mediadl").bold()]);
+        let title = Line::from("mediadl")
+            .bold()
+            .fg("#CECDC3".parse::<Color>().unwrap());
+        // let title = Line::from_iter([Span::from("mediadl").bold().fg("#CECDC3".parse().unwrap())]);
         frame.render_widget(title.centered(), top);
 
         self.render_menu(frame, left);
@@ -57,8 +59,10 @@ impl App {
     }
 
     fn render_menu(&self, frame: &mut Frame, area: Rect) {
+        let focused = self.download.is_menu_focus();
         let block = Block::bordered()
             .border_type(BorderType::Rounded)
+            .border_style(Self::focused_style(focused))
             .padding(Padding::new(2, 0, 1, 0))
             .title(Line::from(format!("{} Menu ", Self::padding_lines(3))))
             .title_bottom(Line::from(format!(
@@ -77,9 +81,9 @@ impl App {
             let item = ListItem::new(name);
 
             if self.download.get_mode() == &mode {
-                item.style(Style::default().bold().blue())
+                item.style(Style::default().bold().fg("#66A0C8".parse().unwrap()))
             } else {
-                item
+                item.dark_gray()
             }
         });
 
@@ -89,139 +93,139 @@ impl App {
     // ↑ ↗ → ↘ ↓ ↙ ← ↖
 
     fn render_download(&self, frame: &mut Frame, area: Rect) {
+        let focused = self.download.is_input_focus();
+        // "", value, boolean
         let fields = self.download.field_items();
+
+        let inner = area.inner(Margin::new(1, 1));
+
+        let row_width = (inner.width * 80) / 100;
+        let row = Self::centered_row(inner, row_width, 1);
+
+        let field_constraints = match fields.len() {
+            3 => vec![
+                Constraint::Percentage(20),
+                Constraint::Length(1),
+                Constraint::Percentage(40),
+                Constraint::Length(1),
+                Constraint::Percentage(40),
+            ],
+            2 => vec![
+                Constraint::Percentage(70),
+                Constraint::Length(1),
+                Constraint::Percentage(30),
+            ],
+            _ => return,
+        };
+
+        let areas = Layout::horizontal(field_constraints).spacing(1).split(row);
 
         let block = Block::bordered()
             .border_type(BorderType::Rounded)
+            .border_style(Self::focused_style(focused))
             .title(Line::from(format!("{} Download ", Self::padding_lines(3))))
             .title_bottom(Line::from(format!(
-                "{} →:tab {} ←:shift+tab {} i:edit {} download:enter",
+                "{} →:j {} ←:k {} edit:i {} normal:esc {} install:enter ",
                 Self::padding_lines(3),
-                Self::padding_lines(2),
-                Self::padding_lines(2),
-                Self::padding_lines(2),
+                Self::padding_lines(1),
+                Self::padding_lines(1),
+                Self::padding_lines(1),
+                Self::padding_lines(1),
             )));
-        let inner = area.inner(Margin::new(1, 1));
-        let widths = [10u16, 12, 10];
-        let separator_columns = 2;
-        let spacing_gaps = 4;
-        let total_width: u16 = widths.iter().sum::<u16>() + separator_columns + spacing_gaps;
-        let row = Self::centered_row(inner, total_width, 1);
 
-        // let items = fields.iter().map(|(name, value, active)| {
-        //     let text = if value.is_empty() {
-        //         format!("<{}>", name)
-        //     } else {
-        //         value.to_string()
-        //     };
-        //
-        //     let style = if *active {
-        //         Style::default().bold().blue()
-        //     } else {
-        //         Style::default()
-        //     };
-        //
-        //     Paragraph::new(text).style(style)
-        // });
+        for (index, (name, value, active)) in fields.iter().enumerate() {
+            let area = areas[index * 2];
 
-        let [creator, sep1, collection, sep2, url] = Layout::horizontal([
-            Constraint::Length(widths[0]),
-            Constraint::Length(1),
-            Constraint::Length(widths[1]),
-            Constraint::Length(1),
-            Constraint::Length(widths[2]),
-        ])
-        .spacing(1)
-        .areas(row);
-
-        let [
-            (creator_name, creator_value, creator_active),
-            (collection_name, collection_value, collection_active),
-            (url_name, url_value, url_active),
-        ] = fields.as_slice()
-        else {
-            return;
-        };
-
-        let creator_style = Self::field_style(*creator_active);
-        let collection_style = Self::field_style(*collection_active);
-        let url_style = Self::field_style(*url_active);
-
-        if self.download.is_editing() && *creator_active {
-            Self::render_editable_field(
-                frame,
-                creator,
-                creator_value,
-                self.download.active_cursor(),
-                widths[0] as usize,
-            );
-        } else {
-            frame.render_widget(
-                Paragraph::new(if creator_value.is_empty() {
-                    format!("{}", creator_name)
+            if self.download.is_editing() && *active {
+                Self::render_editable_field(
+                    frame,
+                    area,
+                    value,
+                    self.download.active_cursor(),
+                    area.width as usize,
+                );
+            } else {
+                let text = if value.is_empty() {
+                    name.to_string()
                 } else {
-                    Self::field_display(creator_value, widths[0] as usize)
-                })
-                .style(creator_style),
-                creator,
-            );
+                    Self::field_display(value, area.width as usize)
+                };
+
+                let style = Self::field_style(&self, *active);
+
+                frame.render_widget(Paragraph::new(text).style(style), area);
+            }
         }
 
-        frame.render_widget(Paragraph::new("/"), sep1);
+        for index in 0..fields.len().saturating_sub(1) {
+            let separator_area = areas[index * 2 + 1];
 
-        if self.download.is_editing() && *collection_active {
-            Self::render_editable_field(
-                frame,
-                creator,
-                creator_value,
-                self.download.active_cursor(),
-                widths[0] as usize,
-            );
-        } else {
-            frame.render_widget(
-                Paragraph::new(if collection_value.is_empty() {
-                    format!("{}", collection_name)
-                } else {
-                    Self::field_display(collection_value, widths[1] as usize)
-                })
-                .style(collection_style),
-                collection,
-            );
+            frame.render_widget(Paragraph::new("/"), separator_area);
         }
 
-        frame.render_widget(Paragraph::new("/"), sep2);
-
-        if self.download.is_editing() && *url_active {
-            Self::render_editable_field(
-                frame,
-                url,
-                url_value,
-                self.download.active_cursor(),
-                widths[2] as usize,
-            );
-        } else {
-            frame.render_widget(
-                Paragraph::new(if url_value.is_empty() {
-                    format!("{}", url_name)
-                } else {
-                    Self::field_display(url_value, widths[2] as usize)
-                })
-                .style(url_style),
-                url,
-            );
-        }
         frame.render_widget(block, area);
     }
 
     fn render_output(&self, frame: &mut Frame, area: Rect) {
+        let focused = self.download.is_output_focus();
         let block = Block::bordered()
             .border_type(BorderType::Rounded)
+            .border_style(Self::focused_style(focused))
             .title(Line::from(format!("{} Output ", Self::padding_lines(3))))
             .title_bottom(Line::from(format!(
-                "{} q:ctrl+q {} options:C ",
+                "{} q:ctrl+q {} options:C {} →:tab {} ←:shift+tab ",
                 Self::padding_lines(3),
-                Self::padding_lines(2)
+                Self::padding_lines(1),
+                Self::padding_lines(1),
+                Self::padding_lines(1)
             )));
+        let inner = area.inner(Margin::new(1, 1));
+        let width = inner.width as usize;
+        if width == 0 {
+            return;
+        }
+
+        let mut formatted_lines: Vec<Line> = Vec::new();
+        for raw_line in self.output.lines() {
+            if raw_line.is_empty() {
+                formatted_lines.push(Line::from(""));
+                continue;
+            }
+
+            let chars: Vec<char> = raw_line.chars().collect();
+            for chunk in chars.chunks(width) {
+                let line_str: String = chunk.iter().collect();
+
+                // Prettify common yt-dlp tag prefixes
+                let styled_line = if line_str.starts_with("[download]") {
+                    line_str.replace("[download]", "   ")
+                } else if line_str.starts_with("[ExtractAudio]") {
+                    line_str.replace("[ExtractAudio]", "  🎵")
+                } else if line_str.starts_with("[EmbedThumbnail]") {
+                    line_str.replace("[EmbedThumbnail]", "  🖼 ")
+                } else if line_str.starts_with("Download finished") {
+                    format!("  ✔ {}", line_str)
+                } else {
+                    line_str
+                };
+
+                formatted_lines.push(Line::from(styled_line));
+            }
+        }
+        let total_rows = formatted_lines.len();
+        let visible_rows = inner.height as usize;
+        let max_scroll = total_rows.saturating_sub(visible_rows);
+
+        self.output.set_last_max_scroll(max_scroll);
+
+        let scroll = if self.output.follow_tail() {
+            max_scroll
+        } else {
+            self.output.scroll_offset().min(max_scroll)
+        };
+        let paragraph = Paragraph::new(formatted_lines).scroll((scroll as u16, 0));
+
+        frame.render_widget(paragraph, inner);
         frame.render_widget(block, area);
     }
 
@@ -239,18 +243,17 @@ impl App {
         area
     }
 
-    fn field_style(active: bool) -> Style {
-        if active {
-            Style::default().bold().blue()
+    fn field_style(&self, active: bool) -> Style {
+        let style = if active && self.download.is_input_focus() {
+            Style::default().bold().fg("#66A0C8".parse().unwrap())
         } else {
             Style::default().dark_gray()
-        }
+        };
+        style.underlined()
     }
 
     // only during normal mode
     fn field_display(text: &str, width: usize) -> String {
-        // last column for /
-        // TODO: scrolling
         let content_width = width.saturating_sub(1);
         let char_count = text.chars().count();
 
@@ -265,32 +268,28 @@ impl App {
             text.to_string()
         };
 
-        // ensures that / is always at the end
         // pads out the values
         format!("{:<width$}", content, width = content_width)
     }
 
     fn field_display_editable(text: &str, cursor: usize, width: usize) -> (String, usize) {
-        let content_width = width.saturating_sub(1);
-        if content_width == 0 {
+        // let content_width = width.saturating_sub(1);
+        if width == 0 {
             return (String::new(), 0);
         }
         let chars: Vec<char> = text.chars().collect();
         let len = chars.len();
 
-        let scroll_start = if cursor >= content_width {
-            cursor - content_width + 1
+        let scroll_start = if cursor >= width {
+            cursor - width + 1
         } else {
             0
         };
-        let scroll_end = (scroll_start + content_width).min(len);
+        let scroll_end = (scroll_start + width).min(len);
         let visible: String = chars[scroll_start..scroll_end].iter().collect();
 
         let cursor_col = cursor.saturating_sub(scroll_start);
-        (
-            format!("{:<width$}", visible, width = content_width),
-            cursor_col,
-        )
+        (format!("{:<width$}", visible, width = width), cursor_col)
     }
 
     fn render_editable_field(
@@ -302,10 +301,189 @@ impl App {
     ) {
         let (visible, cursor_col) = Self::field_display_editable(text, cursor, width);
 
-        let paragraph = Paragraph::new(visible).style(Style::default().bold().blue());
+        let paragraph =
+            Paragraph::new(visible).style(Style::default().bold().fg("#66A0C8".parse().unwrap()));
 
         frame.render_widget(paragraph, area);
 
         frame.set_cursor_position((area.x + cursor_col as u16, area.y));
     }
+
+    fn focused_style(focused: bool) -> Style {
+        let border_colour = if focused { "#4385BE" } else { "#6F6E69" };
+        if focused {
+            Style::default().fg(border_colour.parse().unwrap())
+        } else {
+            Style::default().fg(border_colour.parse().unwrap())
+        }
+    }
 }
+
+// DUMP
+//
+// Paragraph::new(text).style(style);
+// let items = fields.iter().map(|(name, value, active)| {
+//     let text = if value.is_empty() {
+//         format!("<{}>", name)
+//     } else {
+//         value.to_string()
+//     };
+//
+//     let style = if *active {
+//         Style::default().bold().blue()
+//     } else {
+//         Style::default()
+//     };
+//
+//     Paragraph::new(text).style(style)
+// });
+
+// if fields.len() == 3 {
+//     let [creator, sep1, collection, sep2, url] = Layout::horizontal([
+//         Constraint::Length(widths[0]),
+//         Constraint::Length(1),
+//         Constraint::Length(widths[1]),
+//         Constraint::Length(1),
+//         Constraint::Length(widths[2]),
+//     ])
+//     .spacing(1)
+//     .areas(row);
+//
+//     let [
+//         (creator_name, creator_value, creator_active),
+//         (collection_name, collection_value, collection_active),
+//         (url_name, url_value, url_active),
+//     ] = fields.as_slice()
+//     else {
+//         return;
+//     };
+//
+//     let creator_style = Self::field_style(*creator_active);
+//     let collection_style = Self::field_style(*collection_active);
+//     let url_style = Self::field_style(*url_active);
+//
+//     if self.download.is_editing() && *creator_active {
+//         Self::render_editable_field(
+//             frame,
+//             creator,
+//             creator_value,
+//             self.download.active_cursor(),
+//             widths[0] as usize,
+//         );
+//     } else {
+//         frame.render_widget(
+//             Paragraph::new(if creator_value.is_empty() {
+//                 format!("{}", creator_name)
+//             } else {
+//                 Self::field_display(creator_value, widths[0] as usize)
+//             })
+//             .style(creator_style),
+//             creator,
+//         );
+//     }
+//
+//     frame.render_widget(Paragraph::new("/"), sep1);
+//
+//     if self.download.is_editing() && *collection_active {
+//         Self::render_editable_field(
+//             frame,
+//             collection,
+//             collection_value,
+//             self.download.active_cursor(),
+//             widths[0] as usize,
+//         );
+//     } else {
+//         frame.render_widget(
+//             Paragraph::new(if collection_value.is_empty() {
+//                 format!("{}", collection_name)
+//             } else {
+//                 Self::field_display(collection_value, widths[1] as usize)
+//             })
+//             .style(collection_style),
+//             collection,
+//         );
+//     }
+//
+//     frame.render_widget(Paragraph::new("/"), sep2);
+//
+//     if self.download.is_editing() && *url_active {
+//         Self::render_editable_field(
+//             frame,
+//             url,
+//             url_value,
+//             self.download.active_cursor(),
+//             widths[2] as usize,
+//         );
+//     } else {
+//         frame.render_widget(
+//             Paragraph::new(if url_value.is_empty() {
+//                 format!("{}", url_name)
+//             } else {
+//                 Self::field_display(url_value, widths[2] as usize)
+//             })
+//             .style(url_style),
+//             url,
+//         );
+//     }
+// } else {
+//     let [url, sep1, kind] = Layout::horizontal([
+//         Constraint::Length(widths[2]),
+//         Constraint::Length(1),
+//         Constraint::Length(widths[0]),
+//     ])
+//     .spacing(1)
+//     .areas(row);
+//
+//     let [
+//         (url_name, url_value, url_active),
+//         (kind_name, kind_value, kind_active),
+//     ] = fields.as_slice()
+//     else {
+//         return;
+//     };
+//
+//     let url_style = Self::field_style(*url_active);
+//     let kind_style = Self::field_style(*kind_active);
+//
+//     if self.download.is_editing() && *url_active {
+//         Self::render_editable_field(
+//             frame,
+//             url,
+//             url_value,
+//             self.download.active_cursor(),
+//             widths[2] as usize,
+//         );
+//     } else {
+//         frame.render_widget(
+//             Paragraph::new(if url_value.is_empty() {
+//                 format!("{}", url_name)
+//             } else {
+//                 Self::field_display(url_value, widths[2] as usize)
+//             })
+//             .style(url_style),
+//             url,
+//         );
+//     }
+//
+//     frame.render_widget(Paragraph::new("/"), sep1);
+//
+//     if self.download.is_editing() && *kind_active {
+//         Self::render_editable_field(
+//             frame,
+//             kind,
+//             kind_value,
+//             self.download.active_cursor(),
+//             widths[0] as usize,
+//         );
+//     } else {
+//         frame.render_widget(
+//             Paragraph::new(if kind_value.is_empty() {
+//                 format!("{}", kind_name)
+//             } else {
+//                 Self::field_display(kind_value, widths[0] as usize)
+//             })
+//             .style(kind_style),
+//             kind,
+//         );
+//     }
+// }

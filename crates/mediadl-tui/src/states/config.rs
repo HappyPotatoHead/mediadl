@@ -3,13 +3,14 @@ use crate::states::input::TextInput;
 use crate::traits::Cycle;
 use crate::traits::Named;
 use crate::traits::VerticalNavigation;
+use std::sync::Arc;
 
 use crossterm::event::{KeyCode, KeyEvent};
 use mediadl_core::config::{AppConfig, default_config_path};
 
 #[derive(Debug)]
 pub struct ConfigState {
-    pub config: AppConfig,
+    pub config: Arc<AppConfig>,
     selected: ConfigField,
     input_mode: InputMode,
     edit_buffer: TextInput,
@@ -33,7 +34,7 @@ enum ConfigField {
 impl ConfigState {
     pub fn new(config: AppConfig) -> Self {
         Self {
-            config,
+            config: Arc::new(config),
             selected: ConfigField::default(),
             input_mode: InputMode::default(),
             edit_buffer: TextInput::default(),
@@ -58,7 +59,7 @@ impl ConfigState {
 
         if matches!(key_event.code, KeyCode::Enter) {
             let value = self.edit_buffer.text().to_string();
-            return match self.config.set_by_key(self.selected.key(), &value) {
+            return match Arc::make_mut(&mut self.config).set_by_key(self.selected.key(), &value) {
                 Ok(()) => {
                     self.exit_edit();
                     Ok(Some(format!("Updated {}", self.selected.name())))

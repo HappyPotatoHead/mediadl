@@ -86,6 +86,36 @@ impl TextInput {
         }
     }
 
+    pub fn delete_word(&mut self) {
+        if self.cursor == 0 {
+            return;
+        }
+        let before = &self.text[..self.cursor];
+        let mut iter = before.char_indices().rev().peekable();
+        let mut boundary = self.cursor;
+
+        while let Some(&(index, character)) = iter.peek() {
+            if character.is_whitespace() {
+                boundary = index;
+                iter.next();
+            } else {
+                break;
+            }
+        }
+
+        while let Some(&(index, character)) = iter.peek() {
+            if !character.is_whitespace() {
+                boundary = index;
+                iter.next();
+            } else {
+                break;
+            }
+        }
+
+        self.text.drain(boundary..self.cursor);
+        self.cursor = boundary;
+    }
+
     pub fn move_left(&mut self) {
         if self.cursor == 0 {
             return;

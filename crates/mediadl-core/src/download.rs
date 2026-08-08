@@ -1,27 +1,34 @@
 use std::fs::File;
+use std::io::{BufReader, Read};
 use std::path::Path;
 use std::process::Command;
+use std::process::Stdio;
+use std::sync::Arc;
 
 use crate::config::{AppConfig, ThumbnailOption};
 use crate::validation::{normalise_url, sanitise_filename};
 
+pub type ProgressCallback = Arc<dyn Fn(String) + Send + Sync>;
+
 // the values changes every download,
 // that's why i have them separate from the config
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct AudioDownloadRequest {
     pub url: String,
     pub creator: Option<String>,
     pub collection: Option<String>,
     pub retries: Option<u8>,
     pub show_progress: Option<bool>,
+    on_line: Option<ProgressCallback>,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct VideoDownloadRequest {
     pub url: String,
     pub creator: Option<String>,
     pub collection: Option<String>,
     pub retries: Option<u8>,
     pub show_progress: Option<bool>,
+    on_line: Option<ProgressCallback>,
 }
 #[derive(Clone, Debug)]
 pub struct BatchEntry {
@@ -38,7 +45,29 @@ impl AudioDownloadRequest {
             collection: None,
             retries: None,
             show_progress: None,
+            on_line: None,
         }
+    }
+    pub fn with_on_line(mut self, callback: impl Fn(String) + Send + Sync + 'static) -> Self {
+        self.on_line = Some(Arc::new(callback));
+        self
+    }
+
+    fn on_line(&self) -> Option<&ProgressCallback> {
+        self.on_line.as_ref()
+    }
+}
+
+impl std::fmt::Debug for AudioDownloadRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AudioDownloadRequest")
+            .field("url", &self.url)
+            .field("creator", &self.creator)
+            .field("collection", &self.collection)
+            .field("retries", &self.retries)
+            .field("show_progress", &self.show_progress)
+            .field("on_line", &self.on_line.is_some())
+            .finish()
     }
 }
 
@@ -50,10 +79,30 @@ impl VideoDownloadRequest {
             collection: None,
             retries: None,
             show_progress: None,
+            on_line: None,
         }
     }
-}
+    pub fn with_on_line(mut self, callback: impl Fn(String) + Send + Sync + 'static) -> Self {
+        self.on_line = Some(Arc::new(callback));
+        self
+    }
 
+    fn on_line(&self) -> Option<&ProgressCallback> {
+        self.on_line.as_ref()
+    }
+}
+impl std::fmt::Debug for VideoDownloadRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VideoDownloadRequest")
+            .field("url", &self.url)
+            .field("creator", &self.creator)
+            .field("collection", &self.collection)
+            .field("retries", &self.retries)
+            .field("show_progress", &self.show_progress)
+            .field("on_line", &self.on_line.is_some())
+            .finish()
+    }
+}
 impl From<BatchEntry> for AudioDownloadRequest {
     fn from(entry: BatchEntry) -> Self {
         Self {
@@ -62,6 +111,7 @@ impl From<BatchEntry> for AudioDownloadRequest {
             collection: entry.collection,
             retries: None,
             show_progress: Some(false),
+            on_line: None,
         }
     }
 }
@@ -74,6 +124,7 @@ impl From<BatchEntry> for VideoDownloadRequest {
             collection: entry.collection,
             retries: None,
             show_progress: Some(false),
+            on_line: None,
         }
     }
 }
@@ -102,7 +153,11 @@ pub fn download_audio(request: AudioDownloadRequest, config: &AppConfig) -> Resu
                 .arg("--audio-format")
                 .arg(config.default_audio_format.to_string())
                 .arg("-o")
-                .arg(&output_template);
+                .arg(&output_template)
+                .arg("--no-warnings")
+                .arg("--progress")
+                .arg("--newline")
+                .arg("--no-post-overwrites");
 
             apply_thumbnail_args(&mut command, &config.audio_thumbnail);
 
@@ -113,6 +168,7 @@ pub fn download_audio(request: AudioDownloadRequest, config: &AppConfig) -> Resu
             command
         },
         attempts,
+        request.on_line(),
     )
 }
 
@@ -155,6 +211,7 @@ pub fn download_video(request: VideoDownloadRequest, config: &AppConfig) -> Resu
             command
         },
         attempts,
+        request.on_line(),
     )
 }
 
@@ -267,7 +324,11 @@ fn apply_thumbnail_args(command: &mut Command, option: &ThumbnailOption) {
     }
 }
 
-fn run_command_with_retries<T>(mut build_command: T, attempts: u8) -> Result<(), String>
+fn run_command_with_retries<T>(
+    mut build_command: T,
+    attempts: u8,
+    on_line: Option<&ProgressCallback>,
+) -> Result<(), String>
 where
     T: FnMut() -> Command,
 {
@@ -276,7 +337,7 @@ where
     for attempt in 1..=attempts {
         let mut command = build_command();
 
-        match run_command(&mut command) {
+        match run_command(&mut command, on_line) {
             Ok(()) => return Ok(()),
             Err(err) => {
                 last_error = err;
@@ -293,14 +354,67 @@ where
     ))
 }
 
-fn run_command(command: &mut Command) -> Result<(), String> {
-    let status = command
-        .status()
-        .map_err(|err| format!("failed to run yt-dlp: {}", err))?;
-    if !status.success() {
-        return Err(format!("yt-dlp failed with status: {}", status));
+fn run_command(command: &mut Command, on_line: Option<&ProgressCallback>) -> Result<(), String> {
+    match on_line {
+        None => {
+            let status = command
+                .status()
+                .map_err(|err| format!("failed to run yt-dlp: {}", err))?;
+            if !status.success() {
+                return Err(format!("yt-dlp failed with status: {}", status));
+            }
+            Ok(())
+        }
+        Some(callback) => {
+            let mut child = command
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .map_err(|e| format!("failed to run yt-dlp: {e}"))?;
+
+            if let Some(stdout) = child.stdout.take() {
+                let mut reader = BufReader::new(stdout);
+                let mut buffer = Vec::new();
+                let mut byte = [0u8; 1];
+                // yes, this reads line by line
+                while let Ok(1) = reader.read(&mut byte) {
+                    if byte[0] == b'\n' || byte[0] == b'\r' {
+                        if !buffer.is_empty() {
+                            if let Ok(line) = String::from_utf8(buffer.clone()) {
+                                let cleaned = line.replace('\r', "");
+                                let trimmed = cleaned.trim();
+                                if !trimmed.is_empty() {
+                                    callback(trimmed.to_string());
+                                }
+                            }
+                            buffer.clear()
+                        }
+                    } else {
+                        buffer.push(byte[0]);
+                    }
+                }
+
+                // process any trailing output
+                if !buffer.is_empty() {
+                    if let Ok(line) = String::from_utf8(buffer) {
+                        let cleaned = line.replace('\r', "");
+                        let trimmed = cleaned.trim();
+                        if !trimmed.is_empty() {
+                            callback(trimmed.to_string());
+                        }
+                    }
+                }
+            }
+
+            let status = child
+                .wait()
+                .map_err(|e| format!("failed to wait on yt-dlp: {e}"))?;
+            if !status.success() {
+                return Err(format!("yt-dlp failed with status: {status}"));
+            }
+            Ok(())
+        }
     }
-    Ok(())
 }
 
 fn download_batch_parallel<T, F>(

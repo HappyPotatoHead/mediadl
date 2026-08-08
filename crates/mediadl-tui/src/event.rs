@@ -61,6 +61,8 @@ pub enum AppEvent {
     ShowOptions,
     // OpenLayout,
     // OpenColours,
+    DownloadProgress(String),
+    DownloadFinished(Result<(), String>),
 }
 
 /// Terminal event handler.
@@ -111,6 +113,9 @@ impl EventHandler {
         // Ignore the result as the reciever cannot be dropped while this struct still has a
         // reference to it
         let _ = self.sender.send(Event::App(app_event));
+    }
+    pub fn sender(&self) -> mpsc::UnboundedSender<Event> {
+        self.sender.clone()
     }
 }
 

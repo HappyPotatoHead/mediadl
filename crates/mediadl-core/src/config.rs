@@ -10,7 +10,7 @@ use directories::ProjectDirs;
 // it just looked clean i guess
 // will add more or change the code when it becomes unscalable
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum AudioFormat {
     // I already have #[default] here, so the Default impl is not necessary
     #[default]
@@ -21,7 +21,7 @@ pub enum AudioFormat {
     Aac,
     Custom(String),
 }
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum VideoFormat {
     #[default]
     Mp4,
@@ -29,7 +29,7 @@ pub enum VideoFormat {
     Mkv,
     Custom(String),
 }
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum VideoQuality {
     Max,
     Res1440p,
@@ -39,7 +39,7 @@ pub enum VideoQuality {
     Res480p,
     Custom(String),
 }
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub enum ThumbnailOption {
     #[default]
     None,
@@ -56,7 +56,7 @@ pub enum ThumbnailOption {
 // 3. If a field must stay in sync with another field, both are private
 // 4. Expose behaviour, not state
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AppConfig {
     default_download_path: PathBuf,
     audio_output_template: PathBuf,
@@ -468,30 +468,6 @@ fn validate_output_template(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-// DUMP:
-//
-// impl Default for AudioFormat {
-//     fn default() -> Self {
-//         AudioFormat::Mp3
-//     }
-// }
-// impl Default for VideoFormat {
-//     fn default() -> Self {
-//         VideoFormat::Mp4
-//     }
-// }
-// impl Default for VideoQuality {
-//     fn default() -> Self {
-//         VideoQuality::Res1080p
-//     }
-// }
-// impl Default for ThumbnailOption {
-//     fn default() -> Self {
-//         ThumbnailOption::None
-//     }
-// }
-
-// config.rs, bottom of the file
 #[cfg(test)]
 mod tests {
     use super::*;
