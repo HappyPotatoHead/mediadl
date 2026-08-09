@@ -3,7 +3,7 @@ use std::process::{Command, Stdio};
 pub fn normalise_url(url: &str) -> Result<String, String> {
     let mut new_url: String = url.trim().to_string();
     if new_url.is_empty() {
-        return Err("URL cannot be empty!".to_string());
+        return Err("Insert a link!".to_string());
     }
     if new_url.chars().any(char::is_whitespace) {
         return Err(format!("URL cannot contain whitespace: {}", new_url));
@@ -60,7 +60,7 @@ fn _validate_url(url: &str) -> Result<bool, String> {
     // check if it starts with http or https
     let url: &str = url.trim();
     if url.is_empty() {
-        return Err("Url cannot be empty!".to_string());
+        return Err("Insert a link!".to_string());
     }
     if !(url.starts_with("http://") || url.starts_with("https://")) {
         return Err(format!("Url must start with http:// or https://: {}", url));

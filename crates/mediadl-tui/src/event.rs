@@ -1,3 +1,9 @@
+// the changes made here are primarily AppEvent
+// AppEvent should hold behaviour of the application, not the state of the application
+// move up, move down, forward, backward, back, open<>, download progress <string>, etc
+// also for sending and receing events
+// otherwise, not really much to this
+
 use color_eyre::eyre::OptionExt;
 use crossterm::event::Event as CrosstermEvent;
 use futures::{FutureExt, StreamExt};

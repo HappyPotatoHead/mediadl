@@ -1,10 +1,11 @@
+// this generally remained unchanged
 use crate::app::App;
 use color_eyre::eyre::{Result, eyre};
 use mediadl_core::config::load_or_create;
 
 pub mod app;
 pub mod event;
-mod states;
+pub mod states;
 pub mod traits;
 pub mod ui;
 

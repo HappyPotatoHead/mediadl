@@ -2,11 +2,6 @@ use crate::states::input::{EntryType, InputField, InputMode, TextInput};
 use crate::states::output::OutputState;
 use crate::traits::{Cycle, Named, PanelNavigation, VerticalNavigation};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-// we no longer call submit_* directly
-// use mediadl_core::download::{
-//     AudioDownloadRequest, VideoDownloadRequest, download_audio, download_audio_batch_parallel,
-//     download_video, download_video_batch_parallel, load_batch_file,
-// };
 use mediadl_core::download::{AudioDownloadRequest, VideoDownloadRequest, load_batch_file};
 
 #[derive(Debug, Default)]
@@ -36,7 +31,7 @@ struct DownloadInputs {
 }
 
 #[derive(Debug, Default)]
-enum DownloadFocus {
+pub enum DownloadFocus {
     #[default]
     Menu,
     Input,
@@ -61,6 +56,13 @@ impl DownloadState {
         self.input_mode == InputMode::Edit
     }
 
+    pub fn get_focus(&self) -> &DownloadFocus {
+        &self.focus
+    }
+
+    pub fn clear_inputs(&mut self) {
+        self.inputs.clear();
+    }
     pub fn is_menu_focus(&self) -> bool {
         matches!(self.focus, DownloadFocus::Menu)
     }
@@ -129,6 +131,7 @@ impl DownloadState {
         }
     }
 
+    // for the ui
     pub fn field_items(&self) -> Vec<(&'static str, &str, bool)> {
         match self.mode {
             DownloadType::Batch => vec![
@@ -197,7 +200,7 @@ impl DownloadState {
         let url = self.inputs.url.text().trim();
 
         if url.is_empty() {
-            output.push_status("URL cannot be empty".to_string());
+            output.push_status("Error: Insert a link!".to_string());
             return SubmitOutcome::Handled;
         }
 
@@ -215,17 +218,12 @@ impl DownloadState {
 
         output.push_status(format!("Starting video download: {url}"));
         SubmitOutcome::StartVideo(request)
-
-        // match download_video(request, config) {
-        //     Ok(()) => output.push_status("Video download completed".to_string()),
-        //     Err(err) => output.push_status(format!("Video download failed: {err}")),
-        // }
     }
     fn submit_audio(&self, output: &mut OutputState) -> SubmitOutcome {
         let url = self.inputs.url.text().trim();
 
         if url.is_empty() {
-            output.push_status("URL cannot be empty".to_string());
+            output.push_status("Insert a link!".to_string());
             return SubmitOutcome::Handled;
         }
 
@@ -244,18 +242,13 @@ impl DownloadState {
 
         output.push_status(format!("Starting audio download: {url}"));
         SubmitOutcome::StartAudio(request)
-
-        // match download_audio(request, config) {
-        //     Ok(()) => output.push_status("Audio download completed".to_string()),
-        //     Err(err) => output.push_status(format!("Audio download failed: {err}")),
-        // }
     }
 
     fn submit_batch(&self, output: &mut OutputState) -> SubmitOutcome {
         let path = self.inputs.url.text().trim();
 
         if path.is_empty() {
-            output.push_status("Path cannot be empty".to_string());
+            output.push_status("Error: Path cannot be empty".to_string());
             return SubmitOutcome::Handled;
         }
 
@@ -287,11 +280,6 @@ impl DownloadState {
                     entries.into_iter().map(Into::into).collect();
                 output.push_status(format!("Starting video batch ({} entries)", requests.len()));
                 SubmitOutcome::StartVideoBatch(requests)
-
-                // match download_video_batch_parallel(&requests, config) {
-                //     Ok(()) => output.push_status("Video batch download complete"),
-                //     Err(err) => output.push_status(format!("Error: {err}")),
-                // }
             }
             EntryType::Audio => {
                 // reads the file line by line
@@ -299,17 +287,18 @@ impl DownloadState {
                     entries.into_iter().map(Into::into).collect();
                 output.push_status(format!("Starting audio batch ({} entries)", requests.len()));
                 SubmitOutcome::StartAudioBatch(requests)
-
-                // match download_audio_batch_parallel(&requests, config) {
-                //     Ok(()) => output.push_status("Audio batch download complete"),
-                //     Err(err) => output.push_status(format!("Error: {err}")),
-                // }
             }
         }
     }
 }
 
 impl DownloadInputs {
+    pub fn clear(&mut self) {
+        self.creator.set_text("");
+        self.collection.set_text("");
+        self.url.set_text("");
+        self.kind.set_text("");
+    }
     fn get(&self, field: &InputField) -> &TextInput {
         match field {
             InputField::Creator => &self.creator,
@@ -334,6 +323,7 @@ impl VerticalNavigation for DownloadState {
             DownloadFocus::Menu => {
                 self.mode.prev();
                 self.sync_active_field();
+                self.clear_inputs();
             }
             DownloadFocus::Input => self.cycle_active_field(false),
             DownloadFocus::Output => {}
@@ -344,6 +334,7 @@ impl VerticalNavigation for DownloadState {
             DownloadFocus::Menu => {
                 self.mode.next();
                 self.sync_active_field();
+                self.clear_inputs();
             }
             DownloadFocus::Input => self.cycle_active_field(true),
             DownloadFocus::Output => {}
@@ -361,11 +352,6 @@ impl PanelNavigation for DownloadState {
     }
 }
 
-// impl DownloadType {
-//     pub fn mode(&self) -> &DownloadType {
-//         &self.mode
-//     }
-// }
 impl Cycle for DownloadType {
     fn next(&mut self) {
         *self = match self {
@@ -498,3 +484,9 @@ mod tests {
     //     assert_eq!(output_state.lines()[0], "Batch download requested");
     // }
 }
+
+// we no longer call submit_* directly
+// use mediadl_core::download::{
+//     AudioDownloadRequest, VideoDownloadRequest, download_audio, download_audio_batch_parallel,
+//     download_video, download_video_batch_parallel, load_batch_file,
+// };

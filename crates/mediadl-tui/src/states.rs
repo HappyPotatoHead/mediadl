@@ -1,8 +1,14 @@
+// this file exist because the original states.rs was getting too long with too many moving parts.
+// so, i made states.rs into a module with submodules.
+
 pub mod config;
 pub mod download;
 pub mod input;
 pub mod output;
 
+// there are only two screens
+// Download screen -> menu, input, output
+// Config screen -> editor, controls
 #[derive(Debug, Default)]
 pub enum Screen {
     #[default]
@@ -11,6 +17,39 @@ pub enum Screen {
 }
 
 // DUMP: rubbish
+// TODO: future work, it's like saving the things u want to download
+// It's basically what the current batch function already does, but in app
+//
+// pub fn queue_len(&self) -> usize {
+//     self.batch_queue.len()
+// }
+
+// fn _queued_entries(&self) -> &[QueuedEntry] {
+//     &self.batch_queue
+// }
+
+// fn _take_batch_queue(&mut self) -> Vec<QueuedEntry> {
+//     std::mem::take(&mut self.batch_queue)
+// }
+
+// fn enqueue_batch_entry(&mut self) -> Result<(), String> {
+//     let url = self.inputs.url.text().trim();
+//     if url.is_empty() {
+//         return Err("URL cannot be empty".to_string());
+//     }
+//     let kind = EntryType::parse(self.inputs.kind.text())?;
+//
+//     self.batch_queue.push(QueuedEntry {
+//         url: url.to_string(),
+//         kind,
+//     });
+//     self.inputs.url.clear();
+//     self.inputs.kind.clear();
+//     Ok(())
+// }
+//
+// TODO: future  for queuing downloads
+// batch_queue: Vec<QueuedEntry>, <- inside DownloadState
 
 // #[derive(Debug)]
 // struct QueuedEntry {
@@ -77,36 +116,3 @@ pub enum Screen {
 // }
 //
 //
-// TODO: future work, it's like saving the things u want to download
-// It's basically what the current batch function already does, but in app
-//
-// pub fn queue_len(&self) -> usize {
-//     self.batch_queue.len()
-// }
-
-// fn _queued_entries(&self) -> &[QueuedEntry] {
-//     &self.batch_queue
-// }
-
-// fn _take_batch_queue(&mut self) -> Vec<QueuedEntry> {
-//     std::mem::take(&mut self.batch_queue)
-// }
-
-// fn enqueue_batch_entry(&mut self) -> Result<(), String> {
-//     let url = self.inputs.url.text().trim();
-//     if url.is_empty() {
-//         return Err("URL cannot be empty".to_string());
-//     }
-//     let kind = EntryType::parse(self.inputs.kind.text())?;
-//
-//     self.batch_queue.push(QueuedEntry {
-//         url: url.to_string(),
-//         kind,
-//     });
-//     self.inputs.url.clear();
-//     self.inputs.kind.clear();
-//     Ok(())
-// }
-//
-// TODO: future  for queuing downloads
-// batch_queue: Vec<QueuedEntry>, <- inside DownloadState

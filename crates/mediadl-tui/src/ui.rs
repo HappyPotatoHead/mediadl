@@ -125,13 +125,20 @@ impl App {
             .border_style(Self::focused_style(focused))
             .title(Line::from(format!("{} Download ", Self::padding_lines(3))))
             .title_bottom(Line::from(format!(
-                "{} →:j {} ←:k {} edit:i {} normal:esc {} install:enter ",
+                "{} ←:j {} →:k {} edit:i {} clear:c ",
                 Self::padding_lines(3),
                 Self::padding_lines(1),
                 Self::padding_lines(1),
                 Self::padding_lines(1),
-                Self::padding_lines(1),
-            )));
+            )))
+            .title_top(
+                Line::from(format!(
+                    " normal:esc {} install:enter {}",
+                    Self::padding_lines(1),
+                    Self::padding_lines(3)
+                ))
+                .right_aligned(),
+            );
 
         for (index, (name, value, active)) in fields.iter().enumerate() {
             let area = areas[index * 2];
@@ -187,30 +194,43 @@ impl App {
 
         let mut formatted_lines: Vec<Line> = Vec::new();
         for raw_line in self.output.lines() {
-            if raw_line.is_empty() {
+            let trimmed = raw_line.trim();
+
+            if trimmed.is_empty() {
                 formatted_lines.push(Line::from(""));
                 continue;
             }
 
-            let chars: Vec<char> = raw_line.chars().collect();
-            for chunk in chars.chunks(width) {
-                let line_str: String = chunk.iter().collect();
+            let clean_str = trimmed
+                .strip_prefix("[download]")
+                .or_else(|| trimmed.strip_prefix("[ExtractAudio]"))
+                .or_else(|| trimmed.strip_prefix("[EmbedThumbnail]"))
+                .unwrap_or(trimmed)
+                .trim();
 
-                // Prettify common yt-dlp tag prefixes
-                let styled_line = if line_str.starts_with("[download]") {
-                    line_str.replace("[download]", "   ")
-                } else if line_str.starts_with("[ExtractAudio]") {
-                    line_str.replace("[ExtractAudio]", "  🎵")
-                } else if line_str.starts_with("[EmbedThumbnail]") {
-                    line_str.replace("[EmbedThumbnail]", "  🖼 ")
-                } else if line_str.starts_with("Download finished") {
-                    format!("  ✔ {}", line_str)
+            let line_style =
+                if clean_str.starts_with("Error:") || clean_str.starts_with("Download failed") {
+                    Style::default().fg(Color::Red).bold()
+                } else if clean_str.starts_with("Starting") {
+                    Style::default().fg(Color::Cyan)
+                } else if clean_str.starts_with("Download finished")
+                    || clean_str.starts_with("Finished")
+                {
+                    Style::default().fg(Color::Green).bold()
                 } else {
-                    line_str
+                    Style::default().dark_gray()
                 };
 
-                formatted_lines.push(Line::from(styled_line));
+            let chars: Vec<char> = clean_str.chars().collect();
+            if chars.is_empty() {
+                formatted_lines.push(Line::from("").style(line_style));
+            } else {
+                for chunk in chars.chunks(width) {
+                    let chunk_str: String = chunk.iter().collect();
+                    formatted_lines.push(Line::from(chunk_str).style(line_style));
+                }
             }
+            // formatted_lines.push(Line::from(clean_str).style(line_style));
         }
         let total_rows = formatted_lines.len();
         let visible_rows = inner.height as usize;

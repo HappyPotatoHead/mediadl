@@ -200,7 +200,11 @@ pub fn download_video(request: VideoDownloadRequest, config: &AppConfig) -> Resu
                 .arg("--merge-output-format")
                 .arg(config.default_video_format.to_string())
                 .arg("-o")
-                .arg(&output_template);
+                .arg(&output_template)
+                .arg("--no-warnings")
+                .arg("--progress")
+                .arg("--newline")
+                .arg("--no-post-overwrites");
 
             apply_thumbnail_args(&mut command, &config.video_thumbnail);
 
@@ -343,7 +347,13 @@ where
                 last_error = err;
 
                 if attempt < attempts {
-                    eprintln!("Attempt {attempt}/{attempts} failed. Retrying...");
+                    let msg = format!("Attempt {attempt}/{attempts} failed. Retrying...");
+
+                    if let Some(callback) = on_line {
+                        callback(msg);
+                    } else {
+                        println!("\n{msg}")
+                    }
                 }
             }
         }

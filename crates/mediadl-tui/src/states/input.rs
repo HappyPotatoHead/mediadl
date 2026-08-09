@@ -45,7 +45,7 @@ impl EntryType {
             "video" | "v" => Ok(Self::Video),
             "audio" | "a" => Ok(Self::Audio),
             other => Err(format!(
-                "type must be \"video\" or \"audio\", got \"{other}\""
+                "Type must be \"video/v\" or \"audio/v\", got \"{other}\""
             )),
         }
     }
