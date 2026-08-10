@@ -39,7 +39,7 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v5
+              uses: actions/checkout@v7
 
             - name: Build release binary
               run: cargo build -p mediadl-cli --release
