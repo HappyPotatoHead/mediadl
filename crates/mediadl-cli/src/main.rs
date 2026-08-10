@@ -25,13 +25,10 @@ fn main() -> Result<(), String> {
         } => {
             let config = load_or_create()?;
 
-            let request = AudioDownloadRequest {
-                url,
-                creator,
-                collection,
-                retries,
-                show_progress: None,
-            };
+            let mut request = AudioDownloadRequest::new(url);
+            request.creator = creator;
+            request.collection = collection;
+            request.retries = retries;
 
             download_audio(request, &config)?;
         }
@@ -43,13 +40,10 @@ fn main() -> Result<(), String> {
         } => {
             let config = load_or_create()?;
 
-            let request = VideoDownloadRequest {
-                url,
-                creator,
-                collection,
-                retries,
-                show_progress: None,
-            };
+            let mut request = VideoDownloadRequest::new(url);
+            request.creator = creator;
+            request.collection = collection;
+            request.retries = retries;
 
             download_video(request, &config)?;
         }

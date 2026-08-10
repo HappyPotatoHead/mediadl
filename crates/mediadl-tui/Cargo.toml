@@ -1,8 +1,25 @@
 [package]
-name = "mediadl-core"
+name = "mediadl-tui"
 version = "0.1.0"
+description = "yt-dlp wrapper for video and audio archiving"
+authors = ["Jimmy Ding <jimmyding9719@gmail.com>"]
+license = "MIT"
 edition = "2024"
 
 [dependencies]
-directories = "6"
-csv = "1"
+mediadl-core = { path = "../mediadl-core" }
+crossterm = { version = "0.29.0", features = ["event-stream"] }
+futures = "0.3.32"
+ratatui = "0.30.2"
+tokio = { version = "1.52.3", features = ["full"] }
+color-eyre = "0.6.5"
+
+# [[bin]]
+# name="mediadl"
+# path = "src/main.rs"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

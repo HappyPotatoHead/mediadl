@@ -10,7 +10,7 @@ use directories::ProjectDirs;
 // it just looked clean i guess
 // will add more or change the code when it becomes unscalable
 
-#[derive(Default)]
+#[derive(Debug, Default, Clone)]
 pub enum AudioFormat {
     // I already have #[default] here, so the Default impl is not necessary
     #[default]
@@ -21,7 +21,7 @@ pub enum AudioFormat {
     Aac,
     Custom(String),
 }
-#[derive(Default)]
+#[derive(Debug, Default, Clone)]
 pub enum VideoFormat {
     #[default]
     Mp4,
@@ -29,7 +29,7 @@ pub enum VideoFormat {
     Mkv,
     Custom(String),
 }
-#[derive(Default)]
+#[derive(Debug, Default, Clone)]
 pub enum VideoQuality {
     Max,
     Res1440p,
@@ -39,7 +39,7 @@ pub enum VideoQuality {
     Res480p,
     Custom(String),
 }
-#[derive(Default)]
+#[derive(Debug, Default, Clone)]
 pub enum ThumbnailOption {
     #[default]
     None,
@@ -56,6 +56,7 @@ pub enum ThumbnailOption {
 // 3. If a field must stay in sync with another field, both are private
 // 4. Expose behaviour, not state
 
+#[derive(Debug, Clone)]
 pub struct AppConfig {
     default_download_path: PathBuf,
     audio_output_template: PathBuf,
@@ -215,6 +216,54 @@ impl AppConfig {
         config.save_config_file(path)?;
 
         Ok(config)
+    }
+
+    // for the rat
+    pub fn set_by_key(&mut self, key: &str, value: &str) -> Result<(), String> {
+        match key {
+            "download_path" => self.set_download_path(value),
+            "audio_format" => {
+                self.default_audio_format = value.parse::<AudioFormat>()?;
+                Ok(())
+            }
+            "video_format" => {
+                self.default_video_format = value.parse::<VideoFormat>()?;
+                Ok(())
+            }
+            "video_quality" => {
+                self.default_video_quality = value.parse::<VideoQuality>()?;
+                Ok(())
+            }
+            "audio_thumbnail" => {
+                self.audio_thumbnail = value.parse::<ThumbnailOption>()?;
+                Ok(())
+            }
+            "video_thumbnail" => {
+                self.video_thumbnail = value.parse::<ThumbnailOption>()?;
+                Ok(())
+            }
+            "audio_output_template" => self.set_audio_template_path(value),
+            "video_output_template" => self.set_video_template_path(value),
+            "retries" => self.set_default_retries(value),
+            "max_parallel_downloads" => self.set_max_parallel_downloads(value),
+            other => Err(format!("unknown config key: {}", other)),
+        }
+    }
+
+    pub fn get_by_key(&self, key: &str) -> String {
+        match key {
+            "download_path" => self.default_download_path.display().to_string(),
+            "audio_format" => self.default_audio_format.to_string(),
+            "video_format" => self.default_video_format.to_string(),
+            "video_quality" => self.default_video_quality.to_string(),
+            "audio_thumbnail" => self.audio_thumbnail.to_string(),
+            "video_thumbnail" => self.video_thumbnail.to_string(),
+            "audio_output_template" => self.audio_output_template.display().to_string(),
+            "video_output_template" => self.video_output_template.display().to_string(),
+            "retries" => self.default_retries.to_string(),
+            "max_parallel_downloads" => self.max_parallel_downloads.to_string(),
+            _ => String::new(),
+        }
     }
 }
 
@@ -419,25 +468,42 @@ fn validate_output_template(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-// DUMP:
-//
-// impl Default for AudioFormat {
-//     fn default() -> Self {
-//         AudioFormat::Mp3
-//     }
-// }
-// impl Default for VideoFormat {
-//     fn default() -> Self {
-//         VideoFormat::Mp4
-//     }
-// }
-// impl Default for VideoQuality {
-//     fn default() -> Self {
-//         VideoQuality::Res1080p
-//     }
-// }
-// impl Default for ThumbnailOption {
-//     fn default() -> Self {
-//         ThumbnailOption::None
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn default_config_has_expected_download_path() {
+        let config = AppConfig::default();
+        assert_eq!(config.get_download_path(), Path::new("./downloads"));
+    }
+
+    #[test]
+    fn set_default_retries_caps_at_max() {
+        let mut config = AppConfig::default();
+        config.set_default_retries("99").unwrap();
+        assert_eq!(config.get_default_retries(), 10);
+    }
+
+    #[test]
+    fn set_default_retries_rejects_non_numeric() {
+        let mut config = AppConfig::default();
+        assert!(config.set_default_retries("abc").is_err());
+    }
+
+    #[test]
+    fn save_and_load_round_trip() {
+        let dir = env::temp_dir().join("mediadl_test_config");
+        let path = dir.join("config");
+
+        let mut config = AppConfig::default();
+        config.set_default_retries("5").unwrap();
+        config.save_config_file(&path).unwrap();
+
+        let loaded = AppConfig::load_config_file(&path).unwrap();
+        assert_eq!(loaded.get_default_retries(), 5);
+
+        let _ = std::fs::remove_dir_all(dir);
+    }
+}
