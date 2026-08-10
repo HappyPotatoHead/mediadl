@@ -4,6 +4,7 @@
 pub mod config;
 pub mod download;
 pub mod input;
+pub mod option;
 pub mod output;
 
 // there are only two screens

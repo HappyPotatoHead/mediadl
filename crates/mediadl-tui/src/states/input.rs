@@ -1,4 +1,4 @@
-use crate::traits::Named;
+// use crate::traits::Named;
 
 #[derive(Debug, Default)]
 pub struct TextInput {
@@ -28,16 +28,16 @@ pub enum InputMode {
     Edit,
 }
 
-impl Named for InputField {
-    fn name(&self) -> &'static str {
-        match self {
-            InputField::Creator => "Creator",
-            InputField::Collection => "Collection",
-            InputField::Url => "Url",
-            InputField::Type => "Type",
-        }
-    }
-}
+// impl Named for InputField {
+//     fn name(&self) -> &'static str {
+//         match self {
+//             InputField::Creator => "Creator",
+//             InputField::Collection => "Collection",
+//             InputField::Url => "Url",
+//             InputField::Type => "Type",
+//         }
+//     }
+// }
 
 impl EntryType {
     pub fn parse(value: &str) -> Result<Self, String> {

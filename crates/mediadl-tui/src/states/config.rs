@@ -16,6 +16,18 @@ pub struct ConfigState {
     edit_buffer: TextInput,
 }
 
+pub struct ConfigPageItem {
+    pub name: String,
+    pub description: &'static str,
+    pub value: String,
+    pub is_selected: bool,
+}
+
+pub struct ConfigPage {
+    pub items: Vec<ConfigPageItem>,
+    pub lines_above_selected: usize,
+}
+
 #[derive(Debug, Default, PartialEq)]
 enum ConfigField {
     #[default]
@@ -87,11 +99,17 @@ impl ConfigState {
         self.edit_buffer.cursor_position()
     }
 
-    pub fn field_items(&self) -> impl Iterator<Item = (&'static str, String, bool)> + '_ {
+    pub fn field_items(
+        &self,
+    ) -> impl Iterator<Item = (&'static str, &'static str, String, bool)> + '_ {
         ConfigField::ALL.into_iter().map(move |f| {
             (
+                // name
                 f.name(),
+                f.description(),
+                // value
                 self.config.get_by_key(f.key()),
+                // selection (bool) -> for the ui
                 f == self.selected,
             )
         })
@@ -104,6 +122,64 @@ impl ConfigState {
 
     fn exit_edit(&mut self) {
         self.input_mode = InputMode::Normal;
+    }
+
+    pub fn active_page(&self, viewport_height: usize) -> ConfigPage {
+        let field_items: Vec<_> = self.field_items().collect();
+        let selected_index = field_items
+            .iter()
+            .position(|(_, _, _, is_selected)| *is_selected)
+            .unwrap_or(0);
+
+        let mut pages: Vec<Vec<usize>> = Vec::new();
+        let mut current_page = Vec::new();
+        let mut current_page_height = 0;
+
+        for (index, (_name, description, _value, _is_seleccted)) in field_items.iter().enumerate() {
+            // description, key/value, spacing
+            let item_height = description.lines().count() + 2;
+
+            if current_page_height + item_height > viewport_height && !current_page.is_empty() {
+                pages.push(current_page);
+                current_page = Vec::new();
+                current_page_height = 0;
+            }
+
+            current_page.push(index);
+            current_page_height += item_height;
+        }
+        if !current_page.is_empty() {
+            pages.push(current_page);
+        }
+
+        let active_page_indices = pages
+            .iter()
+            .find(|page| page.contains(&selected_index))
+            .cloned()
+            .unwrap_or_default();
+
+        let mut lines_above_selected = 0;
+        let mut items = Vec::with_capacity(active_page_indices.len());
+
+        for &index in &active_page_indices {
+            let (name, description, value, is_selected) = &field_items[index];
+            let desc_lines_count = description.lines().count();
+
+            if index < selected_index {
+                lines_above_selected += desc_lines_count + 2;
+            }
+
+            items.push(ConfigPageItem {
+                name: name.to_string(),
+                description,
+                value: value.to_string(),
+                is_selected: *is_selected,
+            });
+        }
+        ConfigPage {
+            items,
+            lines_above_selected,
+        }
     }
 }
 
@@ -144,6 +220,24 @@ impl ConfigField {
             Self::MaxParallel => "max_parallel_downloads",
         }
     }
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::DownloadPath => "Base download path.\ne.g. Downloads/",
+            Self::AudioFormat => {
+                "Refer to yt-dlp format selection\nopus/mp3/flac\nOne format at a time"
+            }
+            Self::VideoFormat => "Refer to yt-dlp format selection\nmp4/hvac\nOne format at a time",
+            Self::VideoQuality => {
+                "Based on yt-dlp resolution options\nmax/1440/1080/720/480\nCustom resolution is available"
+            }
+            Self::AudioThumbnail => "none/write/embed/both",
+            Self::VideoThumbnail => "none/write/embed/both",
+            Self::AudioOutputTemplate => "%(title)s.%(ext)s",
+            Self::VideoOutputTemplate => "%(title)s.%(ext)s",
+            Self::Retries => "1/2/3",
+            Self::MaxParallel => "Keep it low to avoid blocks\n1/2/3",
+        }
+    }
 }
 
 impl Cycle for ConfigField {
@@ -158,13 +252,13 @@ impl Cycle for ConfigField {
             Self::AudioOutputTemplate => Self::VideoOutputTemplate,
             Self::VideoOutputTemplate => Self::Retries,
             Self::Retries => Self::MaxParallel,
-            Self::MaxParallel => Self::DownloadPath,
+            Self::MaxParallel => Self::MaxParallel,
         };
     }
 
     fn prev(&mut self) {
         *self = match self {
-            Self::DownloadPath => Self::MaxParallel,
+            Self::DownloadPath => Self::DownloadPath,
             Self::AudioFormat => Self::DownloadPath,
             Self::VideoFormat => Self::AudioFormat,
             Self::VideoQuality => Self::VideoFormat,

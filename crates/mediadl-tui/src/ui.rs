@@ -1,13 +1,15 @@
 // ui.rs
 use crate::app::App;
+use crate::states::Screen;
 use crate::states::download::DownloadType;
+use crate::states::option::OptionSelections;
 // use crate::states::Screen;
 use ratatui::Frame;
 use ratatui::{
     layout::{Constraint, Flex, Layout, Margin, Rect},
     style::{Color, Style, Stylize},
     symbols::line::HORIZONTAL,
-    text::Line,
+    text::{Line, Span},
     widgets::{Block, BorderType, List, ListItem, Padding, Paragraph},
 };
 
@@ -34,6 +36,120 @@ terminal changes
 
 impl App {
     pub fn render(&self, frame: &mut Frame) {
+        match self.screen {
+            Screen::Download => self.render_download_screen(frame),
+            Screen::Config => self.render_config_screen(frame),
+        }
+    }
+
+    fn render_config_screen(&self, frame: &mut Frame) {
+        let vertical_main =
+            Layout::vertical([Constraint::Fill(1), Constraint::Length(5)]).spacing(0);
+
+        let [editor, controls] = frame.area().layout(&vertical_main);
+
+        self.render_editor(frame, editor);
+        self.render_controls(frame, controls);
+    }
+
+    fn render_editor(&self, frame: &mut Frame, area: Rect) {
+        let active_blue = Color::Rgb(102, 160, 200);
+
+        let block = Block::bordered()
+            .border_type(BorderType::Rounded)
+            .border_style(Style::default().fg(Color::Rgb(67, 133, 190)))
+            .padding(Padding::new(2, 0, 1, 0))
+            .title(Line::from(format!(
+                "{} Configurations ",
+                Self::padding_lines(3)
+            )));
+
+        let inner = block.inner(area);
+        frame.render_widget(block, area);
+
+        let page = self.config.active_page(inner.height as usize);
+        let mut lines = Vec::new();
+        let mut cursor_col_offset = 0;
+        let mut selected_key_len = 0;
+        let mut selected_description_lines = 0;
+
+        for item in &page.items {
+            let description_lines: Vec<_> = item.description.lines().collect();
+
+            for line in &description_lines {
+                lines.push(Line::from(vec![
+                    Span::raw("# ").dark_gray(),
+                    Span::raw(*line).dark_gray(),
+                ]));
+            }
+            if item.is_selected {
+                selected_key_len = item.name.len();
+                selected_description_lines = description_lines.len();
+
+                let value_span = if self.config.is_editing() {
+                    let max_width = (inner.width as usize).saturating_sub(item.name.len() + 3);
+                    let (visible_text, col) = Self::field_display_editable(
+                        self.config.edit_text(),
+                        self.config.edit_cursor(),
+                        max_width,
+                    );
+
+                    cursor_col_offset = col;
+                    Span::raw(visible_text).fg(Color::Magenta).bold()
+                } else {
+                    Span::raw(&item.value).bold().underlined()
+                };
+
+                lines.push(Line::from(vec![
+                    Span::raw(format!("{} = ", item.name))
+                        .fg(active_blue)
+                        .bold(),
+                    value_span,
+                ]));
+            } else {
+                lines.push(Line::from(vec![
+                    Span::raw(format!("{} = ", item.name)).dark_gray(),
+                    Span::raw(&item.value).dark_gray(),
+                ]));
+            }
+            lines.push(Line::from(""));
+        }
+
+        frame.render_widget(Paragraph::new(lines), inner);
+
+        if self.config.is_editing() {
+            let cursor_y =
+                inner.y + (page.lines_above_selected + selected_description_lines) as u16;
+            let cursor_x = inner.x + selected_key_len as u16 + 3 + cursor_col_offset as u16;
+
+            frame.set_cursor_position((cursor_x, cursor_y));
+        }
+    }
+
+    fn render_controls(&self, frame: &mut Frame, area: Rect) {
+        let block = Block::bordered()
+            .border_type(BorderType::Rounded)
+            .padding(Padding::new(2, 0, 1, 0))
+            .border_style(Style::default().fg("#4385BE".parse().unwrap()))
+            .title(Line::from(format!("{} Menu ", Self::padding_lines(3))));
+
+        let inner_area = block.inner(area);
+        frame.render_widget(block, area);
+
+        let controls = ["↑:k", "↓:j", "edit:i", "normal:esc", "back:q"];
+
+        let rows = Layout::vertical([Constraint::Fill(1)]).split(inner_area);
+        let cols = vec![Constraint::Fill(1); controls.len()];
+        let horizontal = Layout::horizontal(cols).spacing(1);
+
+        let cells = rows.iter().flat_map(|&row| horizontal.split(row).to_vec());
+
+        for (item, cell) in controls.iter().zip(cells) {
+            frame.render_widget(Paragraph::new(*item).centered().dark_gray(), cell);
+        }
+    }
+
+    fn render_download_screen(&self, frame: &mut Frame) {
         // Length(1) sets the height
         // Fill(1) tells the second chunk to absorb all remain spaces
         let vertical_main =
@@ -50,12 +166,16 @@ impl App {
         let title = Line::from("mediadl")
             .bold()
             .fg("#CECDC3".parse::<Color>().unwrap());
-        // let title = Line::from_iter([Span::from("mediadl").bold().fg("#CECDC3".parse().unwrap())]);
+
         frame.render_widget(title.centered(), top);
 
         self.render_menu(frame, left);
         self.render_download(frame, download_panel);
-        self.render_output(frame, output_panel);
+        if self.output.is_options() {
+            self.render_options(frame, output_panel);
+        } else {
+            self.render_output(frame, output_panel);
+        }
     }
 
     fn render_menu(&self, frame: &mut Frame, area: Rect) {
@@ -158,7 +278,7 @@ impl App {
                     Self::field_display(value, area.width as usize)
                 };
 
-                let style = Self::field_style(&self, *active);
+                let style = Self::field_style(self, *active);
 
                 frame.render_widget(Paragraph::new(text).style(style), area);
             }
@@ -230,8 +350,9 @@ impl App {
                     formatted_lines.push(Line::from(chunk_str).style(line_style));
                 }
             }
-            // formatted_lines.push(Line::from(clean_str).style(line_style));
         }
+
+        // it just worked, dont ask how
         let total_rows = formatted_lines.len();
         let visible_rows = inner.height as usize;
         let max_scroll = total_rows.saturating_sub(visible_rows);
@@ -247,6 +368,47 @@ impl App {
 
         frame.render_widget(paragraph, inner);
         frame.render_widget(block, area);
+    }
+
+    fn render_options(&self, frame: &mut Frame, area: Rect) {
+        let focused = self.download.is_output_focus();
+        let block = Block::bordered()
+            .border_type(BorderType::Rounded)
+            .border_style(Self::focused_style(focused))
+            .padding(Padding::new(2, 0, 1, 0))
+            .title(Line::from(format!("{} Options ", Self::padding_lines(3))))
+            .title_top(Line::from(format!(
+                "{} quit:ctrl+q {} back:q {} select:enter ",
+                Self::padding_lines(3),
+                Self::padding_lines(1),
+                Self::padding_lines(1),
+            )))
+            .title_bottom(Line::from(format!(
+                "{} ↑:k {} ↓:j {} ←:h {} →:l ",
+                Self::padding_lines(3),
+                Self::padding_lines(1),
+                Self::padding_lines(1),
+                Self::padding_lines(1),
+            )));
+
+        let items = vec![
+            ("Configuration", OptionSelections::Configuration),
+            ("Colour (soon)", OptionSelections::Colour),
+            ("Layout (soon)", OptionSelections::Layout),
+        ];
+
+        let items = items.into_iter().map(|(name, mode)| {
+            let item = ListItem::new(name);
+
+            if self.option.get_mode() == &mode {
+                item.style(Style::default().bold().fg("#66A0C8".parse().unwrap()))
+            } else {
+                item.dark_gray()
+            }
+        });
+
+        let list = List::new(items).block(block);
+        frame.render_widget(list, area);
     }
 
     fn padding_lines(offset: usize) -> String {
@@ -331,11 +493,7 @@ impl App {
 
     fn focused_style(focused: bool) -> Style {
         let border_colour = if focused { "#4385BE" } else { "#6F6E69" };
-        if focused {
-            Style::default().fg(border_colour.parse().unwrap())
-        } else {
-            Style::default().fg(border_colour.parse().unwrap())
-        }
+        Style::default().fg(border_colour.parse().unwrap())
     }
 }
 

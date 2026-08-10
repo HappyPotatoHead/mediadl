@@ -405,13 +405,13 @@ fn run_command(command: &mut Command, on_line: Option<&ProgressCallback>) -> Res
                 }
 
                 // process any trailing output
-                if !buffer.is_empty() {
-                    if let Ok(line) = String::from_utf8(buffer) {
-                        let cleaned = line.replace('\r', "");
-                        let trimmed = cleaned.trim();
-                        if !trimmed.is_empty() {
-                            callback(trimmed.to_string());
-                        }
+                if !buffer.is_empty()
+                    && let Ok(line) = String::from_utf8(buffer)
+                {
+                    let cleaned = line.replace('\r', "");
+                    let trimmed = cleaned.trim();
+                    if !trimmed.is_empty() {
+                        callback(trimmed.to_string());
                     }
                 }
             }

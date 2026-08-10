@@ -4,6 +4,7 @@ use crate::event::{AppEvent, Event, EventHandler};
 use crate::states::Screen;
 use crate::states::config::ConfigState;
 use crate::states::download::{DownloadFocus, DownloadState, SubmitOutcome};
+use crate::states::option::{OptionSelections, OptionState};
 use crate::states::output::OutputState;
 use crate::traits::{PanelNavigation, VerticalNavigation};
 
@@ -32,6 +33,7 @@ pub struct App {
     pub download: DownloadState,
     pub output: OutputState,
     pub config: ConfigState,
+    pub option: OptionState,
 }
 
 impl App {
@@ -43,6 +45,7 @@ impl App {
             download: DownloadState::default(),
             output: OutputState::default(),
             config: ConfigState::new(config),
+            option: OptionState::default(),
         }
     }
 
@@ -134,7 +137,7 @@ impl App {
             // For the sake of convenience j/k should also be used to switch between
             // input fields
             // and also switching between fields in config screen, layout screen and colour screen
-            // but layout screen and colour screen will have h and l in the future
+            // but options panel, layout screen and colour screen will have h and l in the future
             (KeyCode::Char('j'), _) => {
                 let event = match self.download.get_focus() {
                     DownloadFocus::Menu => AppEvent::MoveDown,
@@ -166,13 +169,22 @@ impl App {
             (KeyCode::Char('c'), _) if self.download.is_output_focus() => {
                 self.output.clear();
             }
+
             // This should be a global character
-            (KeyCode::Char('C'), _) => self.events.send(AppEvent::ShowOptions),
+            (KeyCode::Char('C'), _)
+                if self.download.is_output_focus() && !self.output.is_options() =>
+            {
+                self.events.send(AppEvent::ShowOptions)
+            }
 
             // this will only work if user is in Options menu
-            (KeyCode::Char('e'), _) if self.output.is_options() => {
-                self.events.send(AppEvent::OpenConfig)
-            }
+            // this will be changed to select (enter)
+            // This is currently only a placeholder
+            // UPDATE: see below
+            // NEW: will only work in configuration screen
+            // (KeyCode::Char('e'), _) if self.output.is_options() => {
+            //     self.events.send(AppEvent::OpenConfig)
+            // }
 
             // only works when inside input panel
             // this one means that pressing i anywhere will cause it to be edit mode
@@ -181,9 +193,19 @@ impl App {
                 Screen::Config => self.config.begin_edit(),
             },
 
+            (KeyCode::Enter, _) if self.download.is_output_focus() && self.output.is_options() => {
+                match self.option.get_mode() {
+                    OptionSelections::Configuration => {
+                        self.events.send(AppEvent::OpenConfig);
+                    }
+                    // Placeholders
+                    OptionSelections::Colour | OptionSelections::Layout => {}
+                }
+            }
+
             // for the sake of minimising user error, this can only occur when
             // selecting input panel AND in normal mode
-            (KeyCode::Enter, _) if self.download.can_submit() && !self.output.is_options() => {
+            (KeyCode::Enter, _) if self.download.can_submit() && self.download.is_menu_focus() => {
                 self.events.send(AppEvent::Download);
             }
 
@@ -209,9 +231,14 @@ impl App {
                 match self.download.get_focus() {
                     DownloadFocus::Menu => self.download.move_up(),
                     DownloadFocus::Input => self.download.move_up(),
-                    DownloadFocus::Output => self.output.scroll_up(),
-                    // add in config in the future
-                    // DownloadFocus::Config => AppEvent::MoveDown,
+                    DownloadFocus::Output => {
+                        if self.output.is_options() {
+                            self.option.move_up();
+                        } else {
+                            self.output.scroll_up();
+                        }
+                    } // add in config in the future
+                      // DownloadFocus::Config => AppEvent::MoveDown,
                 };
             }
             Screen::Config => self.config.move_up(),
@@ -224,7 +251,13 @@ impl App {
                 match self.download.get_focus() {
                     DownloadFocus::Menu => self.download.move_down(),
                     DownloadFocus::Input => self.download.move_down(),
-                    DownloadFocus::Output => self.output.scroll_down(),
+                    DownloadFocus::Output => {
+                        if self.output.is_options() {
+                            self.option.move_down();
+                        } else {
+                            self.output.scroll_down();
+                        }
+                    }
                 };
             }
             Screen::Config => self.config.move_down(),
@@ -351,7 +384,7 @@ impl App {
 
     fn show_options(&mut self) {
         if matches!(self.screen, Screen::Download) {
-            self.output.show_options();
+            self.output.toggle_view();
         }
     }
 }

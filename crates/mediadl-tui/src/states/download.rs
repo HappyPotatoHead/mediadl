@@ -1,6 +1,6 @@
 use crate::states::input::{EntryType, InputField, InputMode, TextInput};
 use crate::states::output::OutputState;
-use crate::traits::{Cycle, Named, PanelNavigation, VerticalNavigation};
+use crate::traits::{Cycle, PanelNavigation, VerticalNavigation};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use mediadl_core::download::{AudioDownloadRequest, VideoDownloadRequest, load_batch_file};
 
@@ -12,22 +12,6 @@ pub struct DownloadState {
 
     input_mode: InputMode,
     inputs: DownloadInputs,
-}
-
-pub enum SubmitOutcome {
-    Handled,
-    StartVideo(VideoDownloadRequest),
-    StartAudio(AudioDownloadRequest),
-    StartVideoBatch(Vec<VideoDownloadRequest>),
-    StartAudioBatch(Vec<AudioDownloadRequest>),
-}
-
-#[derive(Debug, Default)]
-struct DownloadInputs {
-    creator: TextInput,
-    collection: TextInput,
-    url: TextInput,
-    kind: TextInput,
 }
 
 #[derive(Debug, Default)]
@@ -44,6 +28,22 @@ pub enum DownloadType {
     Video,
     Audio,
     Batch,
+}
+
+pub enum SubmitOutcome {
+    Handled,
+    StartVideo(VideoDownloadRequest),
+    StartAudio(AudioDownloadRequest),
+    StartVideoBatch(Vec<VideoDownloadRequest>),
+    StartAudioBatch(Vec<AudioDownloadRequest>),
+}
+
+#[derive(Debug, Default)]
+struct DownloadInputs {
+    creator: TextInput,
+    collection: TextInput,
+    url: TextInput,
+    kind: TextInput,
 }
 
 // download here refers to when the user is in the download screen
@@ -370,15 +370,15 @@ impl Cycle for DownloadType {
     }
 }
 
-impl Named for DownloadType {
-    fn name(&self) -> &'static str {
-        match self {
-            Self::Video => "Video",
-            Self::Audio => "Audio",
-            Self::Batch => "Batch",
-        }
-    }
-}
+// impl Named for DownloadType {
+//     fn name(&self) -> &'static str {
+//         match self {
+//             Self::Video => "Video",
+//             Self::Audio => "Audio",
+//             Self::Batch => "Batch",
+//         }
+//     }
+// }
 
 impl Cycle for DownloadFocus {
     fn next(&mut self) {
@@ -397,15 +397,15 @@ impl Cycle for DownloadFocus {
     }
 }
 
-impl Named for DownloadFocus {
-    fn name(&self) -> &'static str {
-        match self {
-            Self::Menu => "Menu",
-            Self::Input => "Input",
-            Self::Output => "Output",
-        }
-    }
-}
+// impl Named for DownloadFocus {
+//     fn name(&self) -> &'static str {
+//         match self {
+//             Self::Menu => "Menu",
+//             Self::Input => "Input",
+//             Self::Output => "Output",
+//         }
+//     }
+// }
 
 #[cfg(test)]
 mod tests {

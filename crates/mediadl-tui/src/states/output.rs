@@ -28,7 +28,7 @@ impl OutputState {
     pub fn push_status(&mut self, message: impl Into<String>) {
         let msg = message.into();
 
-        for raw_part in msg.split(|c| c == '\n' || c == '\r') {
+        for raw_part in msg.split(['\n', '\r']) {
             let part = raw_part.trim().to_string();
             if part.is_empty() {
                 continue;
@@ -49,14 +49,14 @@ impl OutputState {
             }
 
             let is_progress = part.contains("[download]") && part.contains("%");
-            if is_progress {
-                if let Some(last) = self.status.last_mut() {
-                    if last.starts_with("[download]") && last.contains("%") {
-                        *last = part;
-                        self.follow_tail = true;
-                        continue;
-                    }
-                }
+            if is_progress
+                && let Some(last) = self.status.last_mut()
+                && last.starts_with("[download]")
+                && last.contains("%")
+            {
+                *last = part;
+                self.follow_tail = true;
+                continue;
             }
             self.status.push(part);
             self.follow_tail = true;
@@ -102,11 +102,21 @@ impl OutputState {
     pub fn is_options(&self) -> bool {
         matches!(self.view, OutputView::Options)
     }
-    pub fn show_options(&mut self) {
-        self.view = OutputView::Options;
-    }
 
     pub fn show_status(&mut self) {
         self.view = OutputView::Status;
     }
+
+    pub fn toggle_view(&mut self) {
+        self.view = match self.view {
+            OutputView::Status => OutputView::Options,
+            OutputView::Options => OutputView::Status,
+        }
+    }
 }
+
+// impl Cycle for OptionsSelections{
+//     fn next(&mut self){
+//         *self
+//     }
+//     }

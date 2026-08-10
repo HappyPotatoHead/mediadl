@@ -23,6 +23,11 @@ pub trait VerticalNavigation {
     fn move_down(&mut self);
 }
 
+pub trait HorizontalNavigation {
+    fn move_left(&mut self);
+    fn move_right(&mut self);
+}
+
 pub trait PanelNavigation {
     fn forward(&mut self);
     fn backward(&mut self);
